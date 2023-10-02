@@ -10,8 +10,8 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js
 // ==/UserScript==
 
-import { userData, updateVideoData } from "./data";
-import { initDOM } from "./initDOM";
+import { userData, updateVideoData, formatTitle } from "./data";
+import { initDOM, initUserPageDOM } from "./dom";
 
 const script = document.createElement('script');
 script.setAttribute('type', 'text/javascript');
@@ -55,9 +55,20 @@ XMLHttpRequest.prototype.send = function () {
       init(formatTitle(title, modified), s3key);
     });
   }
+
   if (xhr._url.includes("aeskey") && userData.token) {
     this.setRequestHeader("Age", String(Date.now()).slice(-4));
   }
+
+  if (xhr._url.includes("getuser?customUrl") && userData.token) {
+    xhr.addEventListener('load', function () {
+      const { metadataSet: { publishedContentSet }, multiLangNick: { jp } } = JSON.parse(xhr.response);
+      const contentIds = Object.keys(publishedContentSet);
+      if (!contentIds.length) return;
+      initUserPageDOM(contentIds, jp);
+    });
+  }
+
   originalSend.apply(this, arguments);
 };
 // #endregion
@@ -65,8 +76,4 @@ XMLHttpRequest.prototype.send = function () {
 const init = async (title, s3Key) => {
   await updateVideoData(title, s3Key);
   initDOM();
-};
-
-const formatTitle = (title, modified) => {
-  return `[${modified.slice(0, 10)}] ${title.replaceAll(":", ".")}.ts`.replace(/[<>/\\? \*]/g, "");
 };

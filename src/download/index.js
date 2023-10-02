@@ -1,23 +1,77 @@
+import { getContentData } from "../data";
 import { createWriteStream } from "streamsaver";
-import { getDownloadUrlListAndKey } from "./get";
+import { getDownloadUrlListAndKey } from "../get";
 import { decrypt } from "./crypto";
 
 /** @type {DownloadFun} */
-export const download1 = async (url, title, progress) => {
+export const download1 = async (value, title, progress) => {
   /** @type {FileSystemDirectoryHandle} */
   const getDir = await showDirectoryPicker({ mode: "readwrite" });
-  const save = await (await getDir.getFileHandle(title, { create: true })).createWritable();
-  const { stream } = await download(url, progress);
 
-  await stream.pipeTo(save);
+  const save = async (url, title) => {
+    try {
+      await getDir.getFileHandle(title);
+      return true;
+    } catch (error) {
+      const save = await (await getDir.getFileHandle(title, { create: true })).createWritable();
+      const { stream } = await download(url, progress);
+
+      await stream.pipeTo(save, { preventClose: true });
+      return save.close();
+    }
+  };
+
+  if (typeof value === "string") {
+    return save(value, title);
+  }
+  const updateProgress = progress(0);
+  for (const item of value) {
+    const { title, url } = await getContentData(item.id);
+    updateProgress.updateIndex();
+    const is = await save(url, title);
+    if (is) updateProgress.skip();
+  }
+  updateProgress.downloaded();
 };
 /** @type {DownloadFun} */
-export const download2 = async (url, title, progress) => {
+export const download2 = async (value, title, progress) => {
   const zipFileOutputStream = createWriteStream(title);
-  const { stream } = await download(url, progress);
 
-  await stream.pipeTo(zipFileOutputStream);
+
+
+  if (typeof value === "string") {
+    const { stream } = await download(value, progress);
+    return stream.pipeTo(zipFileOutputStream);
+  }
+
+  let i = 0;
+  const updateProgress = progress(0);
+  const readableZipStream = new ZIP({
+    async pull(ctrl) {
+      if (!value[i]) {
+        ctrl.close();
+        updateProgress.downloaded();
+        return;
+      }
+      const process = () => {
+        return new Promise(async (res) => {
+          const item = value[i];
+          updateProgress.updateIndex();
+          const { title, url } = await getContentData(item.id);
+          const { stream } = await download(url, progress);
+          ctrl.enqueue({ name: title, stream: () => stream });
+          i++;
+          res();
+        });
+
+      };
+      await process();
+    }
+  });
+
+  return readableZipStream.pipeTo(zipFileOutputStream);
 };
+
 /**
  * @param {string} url
  * @param {(len:number)=>Progress} progress
@@ -63,15 +117,22 @@ const download = async (url, progress) => {
 
 /**
  * @callback DownloadFun
- * @param {string} url
+ * @param {string | idList} value
  * @param {string} title
- * @param {Progress} progress
+ * @param {(len:number)=>Progress} progress
  * @returns {Promise<void>}
  */
 
 /**
  * @typedef {object} Progress
  * @property {(value: number) => void} updateProgress
+ * @property {() => void} updateIndex
+ * @property {() => void} downloaded
+ * @property {() => void} skip
  * @property {() => void} end
  * @property {() => void} err
+ */
+
+/**
+ * @typedef {{id:string;}[]} idList
  */
