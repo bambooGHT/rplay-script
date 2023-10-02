@@ -2,5 +2,6 @@ rplay script
 
 ### Features
 
-- Download (There is download progress)
-- Play 
+- download (There is download progress)
+- play 
+- update user page batch download 
