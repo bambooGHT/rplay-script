@@ -39,7 +39,7 @@ export const initDOM = async () => {
   div.appendChild(createDOM("下载1 (Chrome | edge)", () => {
     down(1);
   }));
-  div.appendChild(createDOM("下载2 (压缩包)", () => {
+  div.appendChild(createDOM("下载2", () => {
     down(2);
   }));
 };
