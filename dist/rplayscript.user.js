@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.2.0
+// @version      1.2.1
 // @author       bambooGHT
 // @description  修复不显示下载功能的bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
