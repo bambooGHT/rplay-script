@@ -9,8 +9,8 @@ export default defineConfig({
       userscript: {
         name: "rplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.0",
-        description: "支持个人页面直接下载(默认最高画质),视频页面可以播放",
+        version: "1.1",
+        description: "修复用户页面不显示下载功能的bug",
         author: "bambooGHT",
         match: [
           "https://rplay.live/*"

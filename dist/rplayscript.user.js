@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.0
+// @version      1.1
 // @author       bambooGHT
-// @description  支持个人页面直接下载(默认最高画质),视频页面可以播放
+// @description  修复用户页面不显示下载功能的bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @match        https://rplay.live/*
 // @require      https://jimmywarting.github.io/StreamSaver.js/examples/zip-stream.js
