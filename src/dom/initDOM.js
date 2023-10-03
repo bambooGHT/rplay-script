@@ -88,7 +88,7 @@ const createProgressDOM = async () => {
 
 const addDOM = (dom) => {
   return new Promise((res) => {
-    const infoDOM = document.querySelector(".w-player").children[1];
+    const infoDOM = document.querySelector(".w-player").children?.[1];
 
     if (infoDOM?.nodeName === "DIV") {
       const firstDOM = infoDOM.firstChild;
