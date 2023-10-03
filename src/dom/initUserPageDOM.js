@@ -71,7 +71,8 @@ const addDOM = (tipDom, dom, selectList) => {
   const publishedContentDOM = [...document.querySelectorAll(".min-h-screen")];
   /** @type {HTMLDivElement} */
   const DOM = publishedContentDOM[publishedContentDOM.length - 1].firstChild.firstChild;
-  const listDOM = DOM.children[1]?.children[1];
+  let listDOM = DOM.children[1]?.children[1];
+  if (!listDOM) listDOM = DOM.children[2]?.children[1];
   const firstDOM = DOM.children[1];
 
   if (DOM.nodeName !== "DIV") {

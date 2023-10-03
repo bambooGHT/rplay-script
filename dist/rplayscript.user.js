@@ -442,10 +442,12 @@
     }));
   };
   const addDOM = (tipDom, dom, selectList) => {
-    var _a;
+    var _a, _b;
     const publishedContentDOM = [...document.querySelectorAll(".min-h-screen")];
     const DOM = publishedContentDOM[publishedContentDOM.length - 1].firstChild.firstChild;
-    const listDOM = (_a = DOM.children[1]) == null ? void 0 : _a.children[1];
+    let listDOM = (_a = DOM.children[1]) == null ? void 0 : _a.children[1];
+    if (!listDOM)
+      listDOM = (_b = DOM.children[2]) == null ? void 0 : _b.children[1];
     const firstDOM = DOM.children[1];
     if (DOM.nodeName !== "DIV") {
       setTimeout(() => {
