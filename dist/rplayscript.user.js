@@ -5,6 +5,8 @@
 // @author       bambooGHT
 // @description  修复用户页面不显示下载功能的bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
+// @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
+// @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @match        https://rplay.live/*
 // @require      https://jimmywarting.github.io/StreamSaver.js/examples/zip-stream.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js

@@ -17,7 +17,9 @@ export default defineConfig({
         ],
         icon: "https://www.google.com/s2/favicons?sz=64&domain=rplay.live",
         grant: "none",
-        require: ["https://jimmywarting.github.io/StreamSaver.js/examples/zip-stream.js"]
+        require: ["https://jimmywarting.github.io/StreamSaver.js/examples/zip-stream.js"],
+        updateURL: "https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js",
+        downloadURL: "https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js"
       },
       server: {
         open: false
