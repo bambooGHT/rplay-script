@@ -7,14 +7,15 @@ import { clacSize } from "../get";
  * @param {string} userName 
  */
 export const initUserPageDOM = (contentIds, userName) => {
-  const selectList = contentIds.map(p => {
-    return {
-      id: p,
+  const selectList = contentIds.reduce((result, value) => {
+    result[value] = {
+      id: value,
       isDown: false,
       input: undefined
     };
-  });
-  selectList.reverse();
+    return result;
+  }, {});
+
   const tipDom = createDivBox();
   const div = createDivBox();
   tipDom.id = "tipDom";
@@ -22,9 +23,9 @@ export const initUserPageDOM = (contentIds, userName) => {
 
   let isCheck = true;
   let isDown = false;
-  tipDom.appendChild(createDOM("勾选后点下载,默认为最高画质"));
-  tipDom.appendChild(createDOM("全部勾选/取消勾选", () => {
-    selectList.forEach((p) => {
+  tipDom.appendChild(createDOM("默认最高画质"));
+  tipDom.appendChild(createDOM("(全部|取消)勾选", () => {
+    Object.values(selectList).forEach((p) => {
       p.isDown = isCheck;
       p.input.checked = isCheck;
     });
@@ -38,7 +39,7 @@ export const initUserPageDOM = (contentIds, userName) => {
     }
     isDown = true;
 
-    const isList = selectList.filter((p) => p.isDown);
+    const isList = Object.values(selectList).filter((p) => p.isDown);
     if (!isList.length) {
       alert("未选择视频");
       return;
@@ -87,17 +88,21 @@ const addDOM = (tipDom, dom, selectList) => {
 };
 /** 
  * @param {HTMLDivElement[]} listDOM
- * @param {{isDown:boolean; id:number; input:HTMLInputElement}[]} selectList
+ * @param {Record<string,{isDown:boolean; id:number; input:HTMLInputElement}>} selectList
  */
 const listAddCheck = (listDOM, selectList) => {
-  listDOM.forEach((dom, index) => {
+  listDOM.forEach((dom) => {
+    const url = dom.querySelector("a").href;
+    if (url.includes("scenario")) return;
+
+    const id = url.split("play/")[1].replaceAll("/", "");
     const input = createInput("checkbox");
-    input.onchange = () => { selectList[index].isDown = input.checked; };
-    selectList[index].input = input;
+
+    input.onchange = () => { selectList[id].isDown = input.checked; };
+    selectList[id].input = input;
     dom.appendChild(input);
   });
 };
-
 
 const createProgressDOM = (len) => {
   const DOM = document.getElementById("tipDom");

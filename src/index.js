@@ -47,25 +47,28 @@ XMLHttpRequest.prototype.open = function (method, url) {
 };
 
 XMLHttpRequest.prototype.send = function () {
-  const xhr = this;
-  if (xhr._url.includes("content?contentOid") && userData.token) {
-    xhr.addEventListener('load', function () {
-      const { title, modified, streamables } = JSON.parse(xhr.response);
+  const { _url } = this;
+  if (_url.includes("content?contentOid") && userData.token) {
+    this.addEventListener('load', function () {
+      const { title, modified, streamables } = JSON.parse(this.response);
+      if (!streamables) return;
       const { s3key } = streamables[0];
       init(formatTitle(title, modified), s3key);
     });
   }
 
-  if (xhr._url.includes("aeskey") && userData.token) {
+  if (_url.includes("aeskey") && userData.token) {
     this.setRequestHeader("Age", String(Date.now()).slice(-4));
   }
 
-  if (xhr._url.includes("getuser?customUrl") && userData.token) {
-    xhr.addEventListener('load', function () {
-      const { metadataSet: { publishedContentSet }, multiLangNick: { jp } } = JSON.parse(xhr.response);
+  if ((_url.includes("getuser?customUrl") || _url.includes("getuser?userOid")) && userData.token) {
+    this.addEventListener('load', function () {
+      const { _id, metadataSet: { publishedContentSet }, multiLangNick } = JSON.parse(this.response);
+      if (_id === userData.oid) return;
+      const userName = Object.values(multiLangNick)[0];
       const contentIds = Object.keys(publishedContentSet);
       if (!contentIds.length) return;
-      initUserPageDOM(contentIds, jp);
+      initUserPageDOM(contentIds, userName);
     });
   }
 

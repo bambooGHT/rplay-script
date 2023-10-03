@@ -378,23 +378,23 @@
     return infoDOM;
   };
   const initUserPageDOM = (contentIds, userName) => {
-    const selectList = contentIds.map((p) => {
-      return {
-        id: p,
+    const selectList = contentIds.reduce((result, value) => {
+      result[value] = {
+        id: value,
         isDown: false,
         input: void 0
       };
-    });
-    selectList.reverse();
+      return result;
+    }, {});
     const tipDom = createDivBox();
     const div = createDivBox();
     tipDom.id = "tipDom";
     addDOM(tipDom, div, selectList);
     let isCheck = true;
     let isDown = false;
-    tipDom.appendChild(createDOM("勾选后点下载,默认为最高画质"));
-    tipDom.appendChild(createDOM("全部勾选/取消勾选", () => {
-      selectList.forEach((p) => {
+    tipDom.appendChild(createDOM("默认最高画质"));
+    tipDom.appendChild(createDOM("(全部|取消)勾选", () => {
+      Object.values(selectList).forEach((p) => {
         p.isDown = isCheck;
         p.input.checked = isCheck;
       });
@@ -406,7 +406,7 @@
         return;
       }
       isDown = true;
-      const isList = selectList.filter((p) => p.isDown);
+      const isList = Object.values(selectList).filter((p) => p.isDown);
       if (!isList.length) {
         alert("未选择视频");
         return;
@@ -448,12 +448,16 @@
     listAddCheck([...listDOM.children], selectList);
   };
   const listAddCheck = (listDOM, selectList) => {
-    listDOM.forEach((dom, index) => {
+    listDOM.forEach((dom) => {
+      const url = dom.querySelector("a").href;
+      if (url.includes("scenario"))
+        return;
+      const id = url.split("play/")[1].replaceAll("/", "");
       const input = createInput("checkbox");
       input.onchange = () => {
-        selectList[index].isDown = input.checked;
+        selectList[id].isDown = input.checked;
       };
-      selectList[index].input = input;
+      selectList[id].input = input;
       dom.appendChild(input);
     });
   };
@@ -533,24 +537,29 @@
     originalOpen.apply(this, arguments);
   };
   XMLHttpRequest.prototype.send = function() {
-    const xhr = this;
-    if (xhr._url.includes("content?contentOid") && userData.token) {
-      xhr.addEventListener("load", function() {
-        const { title, modified, streamables } = JSON.parse(xhr.response);
+    const { _url } = this;
+    if (_url.includes("content?contentOid") && userData.token) {
+      this.addEventListener("load", function() {
+        const { title, modified, streamables } = JSON.parse(this.response);
+        if (!streamables)
+          return;
         const { s3key } = streamables[0];
         init(formatTitle(title, modified), s3key);
       });
     }
-    if (xhr._url.includes("aeskey") && userData.token) {
+    if (_url.includes("aeskey") && userData.token) {
       this.setRequestHeader("Age", String(Date.now()).slice(-4));
     }
-    if (xhr._url.includes("getuser?customUrl") && userData.token) {
-      xhr.addEventListener("load", function() {
-        const { metadataSet: { publishedContentSet }, multiLangNick: { jp } } = JSON.parse(xhr.response);
+    if ((_url.includes("getuser?customUrl") || _url.includes("getuser?userOid")) && userData.token) {
+      this.addEventListener("load", function() {
+        const { _id, metadataSet: { publishedContentSet }, multiLangNick } = JSON.parse(this.response);
+        if (_id === userData.oid)
+          return;
+        const userName = Object.values(multiLangNick)[0];
         const contentIds = Object.keys(publishedContentSet);
         if (!contentIds.length)
           return;
-        initUserPageDOM(contentIds, jp);
+        initUserPageDOM(contentIds, userName);
       });
     }
     originalSend.apply(this, arguments);
