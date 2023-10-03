@@ -376,7 +376,7 @@
   const addDOM$1 = (dom) => {
     return new Promise((res) => {
       const infoDOM = document.querySelector(".w-player").children[1];
-      if (infoDOM.nodeName === "DIV") {
+      if ((infoDOM == null ? void 0 : infoDOM.nodeName) === "DIV") {
         const firstDOM = infoDOM.firstChild;
         infoDOM.insertBefore(dom, firstDOM);
         res(infoDOM);
