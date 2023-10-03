@@ -9,8 +9,8 @@ export default defineConfig({
       userscript: {
         name: "rplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.1",
-        description: "修复用户页面不显示下载功能的bug",
+        version: "1.2.0",
+        description: "修复不显示下载功能的bug",
         author: "bambooGHT",
         match: [
           "https://rplay.live/*"

@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.1
+// @version      1.2.0
 // @author       bambooGHT
-// @description  修复用户页面不显示下载功能的bug
+// @description  修复不显示下载功能的bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
@@ -301,7 +301,7 @@
   };
   const initDOM = async () => {
     const div = createDivBox();
-    addDOM$1(div);
+    await addDOM$1(div);
     let isDown = false;
     const { title, downloadIndex, urls, m3u8Data: m3u8Data2 } = videoData;
     div.appendChild(createSelectDOM(videoData.urls, downloadIndex, (e) => {
@@ -316,7 +316,7 @@
         return;
       }
       isDown = true;
-      const { fun, remove } = createProgressDOM$1();
+      const { fun, remove } = await createProgressDOM$1();
       try {
         if (index === 1) {
           await download1(urls[videoData.downloadIndex].url, title, fun);
@@ -335,9 +335,9 @@
       down(2);
     }));
   };
-  const createProgressDOM$1 = () => {
+  const createProgressDOM$1 = async () => {
     const divBox = createDivBox();
-    const DOM = addDOM$1(divBox);
+    const DOM = await addDOM$1(divBox);
     const remove = (time = 5500) => {
       setTimeout(() => {
         DOM.removeChild(divBox);
@@ -374,10 +374,18 @@
     };
   };
   const addDOM$1 = (dom) => {
-    const infoDOM = document.querySelector(".w-player").children[1];
-    const firstDOM = infoDOM.firstChild;
-    infoDOM.insertBefore(dom, firstDOM);
-    return infoDOM;
+    return new Promise((res) => {
+      const infoDOM = document.querySelector(".w-player").children[1];
+      if (infoDOM.nodeName === "DIV") {
+        const firstDOM = infoDOM.firstChild;
+        infoDOM.insertBefore(dom, firstDOM);
+        res(infoDOM);
+        return;
+      }
+      setTimeout(() => {
+        res(addDOM$1(dom));
+      }, 250);
+    });
   };
   const initUserPageDOM = (contentIds, userName) => {
     const selectList = contentIds.reduce((result, value) => {
@@ -554,14 +562,13 @@
     }
     if ((_url.includes("getuser?customUrl") || _url.includes("getuser?userOid")) && userData.token) {
       this.addEventListener("load", function() {
-        const { _id, metadataSet: { publishedContentSet }, multiLangNick } = JSON.parse(this.response);
-        if (_id === userData.oid)
+        const { _id, metadataSet: { publishedContentSet }, nickname } = JSON.parse(this.response);
+        if (_id === userData.oid || !publishedContentSet)
           return;
-        const userName = Object.values(multiLangNick)[0];
         const contentIds = Object.keys(publishedContentSet);
         if (!contentIds.length)
           return;
-        initUserPageDOM(contentIds, userName);
+        initUserPageDOM(contentIds, nickname);
       });
     }
     originalSend.apply(this, arguments);

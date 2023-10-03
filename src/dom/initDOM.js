@@ -6,7 +6,7 @@ import { createDOM, createDivBox, createSelectDOM } from "./createDOM";
 
 export const initDOM = async () => {
   const div = createDivBox();
-  addDOM(div);
+  await addDOM(div);
 
   let isDown = false;
   const { title, downloadIndex, urls, m3u8Data } = videoData;
@@ -23,7 +23,7 @@ export const initDOM = async () => {
       return;
     }
     isDown = true;
-    const { fun, remove } = createProgressDOM();
+    const { fun, remove } = await createProgressDOM();
     try {
       if (index === 1) {
         await download1(urls[videoData.downloadIndex].url, title, fun);
@@ -44,9 +44,9 @@ export const initDOM = async () => {
   }));
 };
 
-const createProgressDOM = () => {
+const createProgressDOM = async () => {
   const divBox = createDivBox();
-  const DOM = addDOM(divBox);
+  const DOM = await addDOM(divBox);
   const remove = (time = 5500) => {
     setTimeout(() => {
       DOM.removeChild(divBox);
@@ -87,9 +87,18 @@ const createProgressDOM = () => {
 };
 
 const addDOM = (dom) => {
-  const infoDOM = document.querySelector(".w-player").children[1];
-  const firstDOM = infoDOM.firstChild;
-  infoDOM.insertBefore(dom, firstDOM);
+  return new Promise((res) => {
+    const infoDOM = document.querySelector(".w-player").children[1];
 
-  return infoDOM;
+    if (infoDOM.nodeName === "DIV") {
+      const firstDOM = infoDOM.firstChild;
+      infoDOM.insertBefore(dom, firstDOM);
+      res(infoDOM);
+      return;
+    }
+
+    setTimeout(() => {
+      res(addDOM(dom));
+    }, 250);
+  });
 };

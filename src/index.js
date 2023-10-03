@@ -63,12 +63,11 @@ XMLHttpRequest.prototype.send = function () {
 
   if ((_url.includes("getuser?customUrl") || _url.includes("getuser?userOid")) && userData.token) {
     this.addEventListener('load', function () {
-      const { _id, metadataSet: { publishedContentSet }, multiLangNick } = JSON.parse(this.response);
-      if (_id === userData.oid) return;
-      const userName = Object.values(multiLangNick)[0];
+      const { _id, metadataSet: { publishedContentSet }, nickname } = JSON.parse(this.response);
+      if (_id === userData.oid || !publishedContentSet) return;
       const contentIds = Object.keys(publishedContentSet);
       if (!contentIds.length) return;
-      initUserPageDOM(contentIds, userName);
+      initUserPageDOM(contentIds, nickname);
     });
   }
 
