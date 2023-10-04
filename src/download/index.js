@@ -1,19 +1,18 @@
-import { getContentData } from "../data";
 import { createWriteStream } from "streamsaver";
-import { getDownloadUrlListAndKey } from "../get";
+import { getDownloadUrlListAndKey, getContentData } from "../get";
 import { decrypt } from "./crypto";
 
 /** @type {DownloadFun} */
 export const download1 = async (value, title, progress) => {
   /** @type {FileSystemDirectoryHandle} */
-  const getDir = await showDirectoryPicker({ mode: "readwrite" });
+  const dir = await showDirectoryPicker({ mode: "readwrite" });
 
-  const save = async (url, title) => {
+  const save = async (dir, url, title) => {
     try {
-      await getDir.getFileHandle(title);
+      await dir.getFileHandle(title);
       return true;
     } catch (error) {
-      const save = await (await getDir.getFileHandle(title, { create: true })).createWritable();
+      const save = await (await dir.getFileHandle(title, { create: true })).createWritable();
       const { stream } = await download(url, progress);
 
       await stream.pipeTo(save, { preventClose: true });
@@ -22,13 +21,24 @@ export const download1 = async (value, title, progress) => {
   };
 
   if (typeof value === "string") {
-    return save(value, title);
+    return save(dir, value, title);
   }
   const updateProgress = progress(0);
+  let currentDir = { dir: undefined, name: "" };
   for (const item of value) {
-    const { title, url } = await getContentData(item.id);
+    const { id, name, isCreatorhome } = item;
+    if (name) {
+      if (name !== currentDir.name) {
+        currentDir.dir = await getSaveDir(dir, name);
+        currentDir.name = name;
+      }
+    } else {
+      currentDir.dir = dir;
+    }
+
+    const { title, url } = await getContentData(id, isCreatorhome);
     updateProgress.updateIndex();
-    const is = await save(url, title);
+    const is = await save(currentDir.dir, url, title);
     if (is) updateProgress.skip();
   }
   updateProgress.downloaded();
@@ -55,9 +65,13 @@ export const download2 = async (value, title, progress) => {
       }
       const process = () => {
         return new Promise(async (res) => {
-          const item = value[i];
+          const { id, name } = value[i];
           updateProgress.updateIndex();
-          const { title, url } = await getContentData(item.id);
+          let { title, url } = await getContentData(id);
+          if (name) {
+            title = `${name}/${title}`;
+          }
+
           const { stream } = await download(url, progress);
           ctrl.enqueue({ name: title, stream: () => stream });
           i++;
@@ -115,9 +129,14 @@ const download = async (url, progress) => {
   return { stream };
 };
 
+const getSaveDir = async (dir, name) => {
+  const saveDir = await dir.getDirectoryHandle(name, { create: true });
+  return saveDir;
+};
+
 /**
  * @callback DownloadFun
- * @param {string | idList} value
+ * @param {string | IdList} value
  * @param {string} title
  * @param {(len:number)=>Progress} progress
  * @returns {Promise<void>}
@@ -134,5 +153,5 @@ const download = async (url, progress) => {
  */
 
 /**
- * @typedef {{id:string;}[]} idList
+ * @typedef {{id:string; name:string; }[]} IdList
  */

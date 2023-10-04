@@ -2,7 +2,7 @@ export const createDivBox = () => {
   const div = document.createElement("div");
   div.style.width = "100%";
   div.style.display = "flex";
-  div.style.marginTop = "0.7rem";
+  div.style.margin = "0.65rem 0";
 
   return div;
 };
@@ -21,11 +21,13 @@ export const createDOM = (name, fun) => {
   tempDiv.innerHTML = tempDOM;
   /** @type {HTMLDivElement} */
   const DOM = tempDiv.children[0];
+  DOM.style.userSelect = "none";
   DOM.onclick = fun;
+  
   return DOM;
 };
 /**
- * @param {videoUrls} urls
+ * @param {import("../types").VideoUrls} urls
  * @param {number} selectIndex
  * @param {()=>void} fun
  */
@@ -58,8 +60,8 @@ export const createInput = (type) => {
   const input = document.createElement("input");
   input.type = type;
   input.style.position = "absolute";
-  input.style.width = "18px";
-  input.style.height = "18px";
+  input.style.width = "20px";
+  input.style.height = "20px";
   input.style.top = "0";
   input.style.left = "0";
   input.style.margin = "7px 7px";

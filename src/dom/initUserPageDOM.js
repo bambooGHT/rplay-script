@@ -3,35 +3,74 @@ import { download1, download2 } from "../download";
 import { clacSize } from "../get";
 
 /**
- * @param {string[]} contentIds 
- * @param {string} userName 
+ * @typedef {import("../types.js").VideoList} VideoList 
+ * @typedef {import("../types.js").StoryList} StoryList
  */
-export const initUserPageDOM = (contentIds, userName) => {
-  const selectList = contentIds.reduce((result, value) => {
-    result[value] = {
-      id: value,
-      isDown: false,
-      input: undefined
-    };
+
+/** @type {{normalPosts:Record<string,string>}} */
+const data = {};
+export const updateNormalPosts = (normalPosts) => {
+  data.normalPosts = normalPosts.reduce((result, value) => {
+    result[value._id] = value.text;
     return result;
   }, {});
+};
+/**
+ * @param {VideoList} videoList 
+ * @param {StoryList} storyList
+ * @param {string} userName 
+ */
+export const initUserPageDOM = async (videoList, storyList, userName) => {
 
+  const processDom = initProgressDom();
+  const tipDom = initSelectDom(videoList, storyList);
+  const downDom = initDownDom(videoList, storyList, userName);
+
+  const listDOM = await addDOM([processDom, tipDom, downDom]);
+  listAddCheck(listDOM, videoList, storyList);
+};
+
+const initProgressDom = () => {
+  const processDom = createDivBox();
+  processDom.id = "processDom";
+  processDom.appendChild(createDOM("默认下载最高画质"));
+
+  return processDom;
+};
+
+const initSelectDom = (videoList, storyList) => {
   const tipDom = createDivBox();
-  const div = createDivBox();
-  tipDom.id = "tipDom";
-  addDOM(tipDom, div, selectList);
+  let videoIsDown = true;
+  let storyIsDown = true;
 
-  let isCheck = true;
-  let isDown = false;
-  tipDom.appendChild(createDOM("默认最高画质"));
   tipDom.appendChild(createDOM("(全部|取消)勾选", () => {
-    Object.values(selectList).forEach((p) => {
-      p.isDown = isCheck;
-      p.input.checked = isCheck;
+    Object.values(videoList).forEach((p) => {
+      if (!p.input) return;
+      p.isDown = videoIsDown;
+      p.input.checked = videoIsDown;
     });
-    isCheck = !isCheck;
+    videoIsDown = !videoIsDown;
   }));
 
+  if (Object.values(storyList).length) tipDom.appendChild(createDOM("(全部|取消)勾选合集", () => {
+    Object.values(storyList).forEach((p) => {
+      p.isDown = storyIsDown;
+      p.input.checked = storyIsDown;
+    });
+    storyIsDown = !storyIsDown;
+  }));
+
+  return tipDom;
+};
+/**
+ * @param {VideoList} videoList 
+ * @param {StoryList} storyList
+ * @param {string} userName 
+ */
+const initDownDom = (videoList, storyList, userName) => {
+  const downDom = createDivBox();
+
+  let isDown = false;
   const down = async (downloadType) => {
     if (isDown) {
       alert("已经在下载中");
@@ -39,74 +78,123 @@ export const initUserPageDOM = (contentIds, userName) => {
     }
     isDown = true;
 
-    const isList = Object.values(selectList).filter((p) => p.isDown);
-    if (!isList.length) {
-      alert("未选择视频");
+    const filterStorys = Object.values(storyList).filter((p) => p.isDown);
+    const storyIds = new Set(filterStorys.flatMap((p) => p.ids));
+    const downloadList = Object.values(videoList).filter((p) => {
+      return p.isDown || storyIds.has(p.id);
+    });
+
+    if (!downloadList.length) {
+      alert("未选择视频/合集");
       return;
     }
-    const { fun, remove } = createProgressDOM(isList.length);
+
+    const { fun, remove } = createProgressDOM(downloadList.length);
     try {
       if (downloadType === 1) {
-        await download1(isList, "", fun);
+        await download1(downloadList, "", fun);
       } else {
-        await download2(isList, `${userName}.zip`, fun);
+        await download2(downloadList, `${userName}.zip`, fun);
       }
       isDown = false;
     } catch (error) {
-      console.log(error);
+      console.warn(error);
       remove(3000);
     }
   };
 
-  div.appendChild(createDOM("下载1 (会跳过已下载的文件)", () => {
+  downDom.appendChild(createDOM("下载1 (会跳过已下载的文件)", () => {
     down(1);
   }));
 
-  div.appendChild(createDOM("下载2 (压缩包)", () => {
+  downDom.appendChild(createDOM("下载2 (压缩包)", () => {
     down(2);
   }));
+
+  return downDom;
 };
 
-const addDOM = (tipDom, dom, selectList) => {
-  const publishedContentDOM = [...document.querySelectorAll(".min-h-screen")];
-  /** @type {HTMLDivElement} */
-  const DOM = publishedContentDOM[publishedContentDOM.length - 1].firstChild.firstChild;
-  let listDOM = DOM.children[1]?.children[1];
-  if (!listDOM) listDOM = DOM.children[2]?.children[1];
-  const firstDOM = DOM.children[1];
+let unList = () => { };
 
-  if (DOM.nodeName !== "DIV") {
-    setTimeout(() => {
-      addDOM(tipDom, dom, selectList);
-    }, 250);
-    return;
-  }
-
-  DOM.insertBefore(tipDom, firstDOM);
-  DOM.insertBefore(dom, firstDOM);
-
-  listAddCheck([...listDOM.children], selectList);
-};
-/** 
- * @param {HTMLDivElement[]} listDOM
- * @param {Record<string,{isDown:boolean; id:number; input:HTMLInputElement}>} selectList
+/**
+ * @param {HTMLDivElement} listDOM
+ * @param {VideoList} videoList 
+ * @param {StoryList} storyList
  */
-const listAddCheck = (listDOM, selectList) => {
-  listDOM.forEach((dom) => {
+const listAddCheck = (listDOM, videoList, storyList) => {
+  unList();
+
+  const ids = Object.keys(videoList);
+
+  const addFun = (dom) => {
+    dom.style.position = "relative";
+
     const url = dom.querySelector("a").href;
-    if (url.includes("scenario")) return;
+    const { list, split } = url.includes("scenario") ?
+      { list: storyList, split: "scenario/" } : { list: videoList, split: "play/" };
 
-    const id = url.split("play/")[1].replaceAll("/", "");
+    let id = url.split(split)[1]?.replaceAll("/", "");
+
+    if (!id) {
+      if (!data.normalPosts) return;
+      const id1 = url.split("creatorhome/")[1]?.replace("/detail", "");
+      const text = data.normalPosts[id1];
+      id = ids.find(p => text.includes(p));
+      if (!id) return;
+    };
+
     const input = createInput("checkbox");
-
-    input.onchange = () => { selectList[id].isDown = input.checked; };
-    selectList[id].input = input;
+    input.onchange = () => { list[id].isDown = input.checked; };
+    list[id].input = input;
     dom.appendChild(input);
+  };
+
+  const observer = new MutationObserver(function (mutationRecoards, observer) {
+    for (const item of mutationRecoards) {
+      if (item.type === 'childList') {
+        /** @type {HTMLDivElement} */
+        const DOM = item.addedNodes[0];
+        addFun(DOM);
+      }
+    }
+  });
+
+  unList = () => {
+    observer.disconnect();
+  };
+  observer.observe(listDOM, { childList: true });
+
+  [...listDOM.children].forEach(addFun);
+};
+/**
+ * @param {HTMLDivElement[]} doms 
+ * @returns {Promise<HTMLDivElement>}
+ */
+const addDOM = (doms) => {
+  return new Promise((res) => {
+    const publishedContentDOM = [...document.querySelectorAll(".min-h-screen")];
+    /** @type {HTMLDivElement} */
+    const DOM = publishedContentDOM[publishedContentDOM.length - 1].firstChild?.firstChild;
+    let listDOM = DOM.querySelectorAll(".grid");
+
+    if (DOM?.nodeName === "DIV" && listDOM.length) {
+      const firstDOM = DOM.children[1];
+      doms.forEach((p) => {
+        DOM.insertBefore(p, firstDOM);
+      });
+
+      res(listDOM[0]);
+      return;
+    }
+
+    setTimeout(() => {
+      res(addDOM(doms));
+    }, 250);
   });
 };
 
 const createProgressDOM = (len) => {
-  const DOM = document.getElementById("tipDom");
+  const DOM = document.getElementById("processDom");
   const div = createDOM("");
   DOM.appendChild(div);
 

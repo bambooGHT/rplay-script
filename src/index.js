@@ -10,8 +10,9 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js
 // ==/UserScript==
 
-import { userData, updateVideoData, formatTitle } from "./data";
-import { initDOM, initUserPageDOM } from "./dom";
+import { userData, updateVideoData } from "./data";
+import { initDOM, initUserPageDOM, updateNormalPosts } from "./dom";
+import { formatTitle } from "./get";
 
 const script = document.createElement('script');
 script.setAttribute('type', 'text/javascript');
@@ -61,21 +62,74 @@ XMLHttpRequest.prototype.send = function () {
     this.setRequestHeader("Age", String(Date.now()).slice(-4));
   }
 
-  if ((_url.includes("getuser?customUrl") || _url.includes("getuser?userOid")) && userData.token) {
+  if ((_url.includes("getuser?customUrl") || _url.includes("getuser?userOid") || _url.includes("replays?creatorOid")) && userData.token) {
     this.addEventListener('load', function () {
-      const { _id, metadataSet: { publishedContentSet }, nickname } = JSON.parse(this.response);
-      if (_id === userData.oid || !publishedContentSet) return;
-      const contentIds = Object.keys(publishedContentSet);
-      if (!contentIds.length) return;
-      initUserPageDOM(contentIds, nickname);
+      const data = JSON.parse(this.response);
+      const obj = {
+        ids: [],
+        storys: [],
+        nickname: ""
+      };
+      if (Array.isArray(data) && data.length) {
+        obj.ids = data;
+      } else {
+        const { _id, metadataSet: { publishedContentSet, publishedScenarioSet, normalPosts }, nickname } = data;
+        if (normalPosts?.length) {
+          updateNormalPosts(normalPosts);
+          return;
+        }
+
+        if (_id === userData.oid || !publishedContentSet) return;
+        obj.ids = Object.values(publishedContentSet);
+        obj.storys = Object.values(publishedScenarioSet);
+        obj.nickname = nickname;
+        if (!obj.ids.length) return;
+      }
+
+      const { videoList, storyList } = processUserVideoList(obj.ids, obj.storys);
+      initUserPageDOM(videoList, storyList, obj.nickname);
     });
   }
 
   originalSend.apply(this, arguments);
 };
 // #endregion
-
 const init = async (title, s3Key) => {
   await updateVideoData(title, s3Key);
   initDOM();
+};
+
+const processUserVideoList = (contentIds, storys) => {
+  const ids = {};
+  const storyList = storys.reduce((result, value) => {
+    const contents = Object.keys(value.contents);
+    const name = formatTitle(value.metadata.title, "");
+    contents.forEach((p) => {
+      ids[p] = name;
+    });
+
+    result[value._id] = {
+      id: value._id,
+      name,
+      isDown: false,
+      input: undefined,
+      ids: contents
+    };
+    return result;
+  }, {});
+
+  const videoList = contentIds.reduce((result, value) => {
+    const { _id } = value;
+    const name = ids[_id];
+    result[_id] = {
+      id: _id,
+      isDown: false,
+      isCreatorhome: false,
+      input: undefined,
+      name: name,
+    };
+    return result;
+  }, {});
+
+  return { videoList, storyList };
 };

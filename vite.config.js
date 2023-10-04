@@ -9,8 +9,8 @@ export default defineConfig({
       userscript: {
         name: "rplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.2.1",
-        description: "修复不显示下载功能的bug",
+        version: "1.3.0",
+        description: "添加对合集视频的下载,下载时会排除跟合集里相同的视频,修复部分bug",
         author: "bambooGHT",
         match: [
           "https://rplay.live/*"

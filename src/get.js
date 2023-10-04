@@ -1,3 +1,5 @@
+import { userData } from "./data";
+
 /** @param {string} url */
 export const getDownloadUrlListAndKey = async (url) => {
   const data = await (await fetch(url)).text();
@@ -10,7 +12,7 @@ export const getDownloadUrlListAndKey = async (url) => {
 
 /**
  * @param {string} m3u8Data 
- * @returns {import("./download/types").videoUrls}
+ * @returns {import("./types").VideoUrls}
  */
 export const getResolutionUrls = (m3u8Data) => {
   const urlArray = m3u8Data.split("\n").filter(s => s.includes("http")).slice(1);
@@ -51,4 +53,38 @@ export const clacSize = (size) => {
   }
 
   return `${(size / Math.pow(bye, i)).toFixed(2)}${aMultiples[i]}`;
+};
+
+/**
+ * @param { string } s3Key 
+ * @returns { string }
+ */
+export const getM3u8Url = (s3Key) => {
+  const [type, num, hash] = s3Key.split("/");
+  return `https://api.rplay.live/content/hlsstream?s3key=kr/${type}/${num}/${hash}/${hash}.m3u8&token=${userData.token}&userOid=${userData.oid}&contentOid=6515cda280c7fc6b98065cbe&loginType=plax&abr=false`;
+};
+
+export const getContentData = async (contentId) => {
+  const url = `https://api.rplay.live/content?contentOid=${contentId}&status=published&withComments=true&withContentMetadata=false&requestCanView=true&lang=jp&requestorOid=${userData.oid}&loginType=plax`;
+  const data = await (await fetch(url)).json();
+  const { title, subtitles, modified, streamables } = data;
+  const title1 = Object.values(subtitles || {})[0];
+  const { s3key } = streamables[0];
+  const { urls } = await getm3u8data(s3key);
+
+  return {
+    title: formatTitle((title1 || title), modified),
+    url: urls[urls.length - 1].url
+  };
+};
+
+export const getm3u8data = async (s3Key) => {
+  const m3u8Data = await (await fetch(getM3u8Url(s3Key))).text();
+  const urls = getResolutionUrls(m3u8Data);
+  return { m3u8Data, urls };
+};
+
+export const formatTitle = (title, modified) => {
+  if (modified) modified = `[${modified.slice(0, 10)}]`;
+  return `${modified} ${title.replaceAll(":", ".")}.ts`.replace(/[<>/\\? \*]/g, "");
 };

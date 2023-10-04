@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.2.1
+// @version      1.3.0
 // @author       bambooGHT
-// @description  修复不显示下载功能的bug
+// @description  添加对合集视频的下载,下载时会排除跟合集里相同的视频,修复部分bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
@@ -19,9 +19,9 @@
   'use strict';
 
   const getDownloadUrlListAndKey = async (url) => {
-    const data = await (await fetch(url)).text();
-    const key = await getKey(data);
-    const urlList = data.replaceAll("\n", "").split(/#EXTINF:\d{1,3},/).slice(1);
+    const data2 = await (await fetch(url)).text();
+    const key = await getKey(data2);
+    const urlList = data2.replaceAll("\n", "").split(/#EXTINF:\d{1,3},/).slice(1);
     const urlListLast = urlList[urlList.length - 1];
     urlList[urlList.length - 1] = urlListLast.replace("#EXT-X-ENDLIST", "");
     return { urlList, key };
@@ -59,35 +59,19 @@
     }
     return `${(size / Math.pow(bye, i)).toFixed(2)}${aMultiples[i]}`;
   };
-  const userData = (() => {
-    const { AccountModule: data } = JSON.parse(localStorage.getItem("vuex") || `{}`);
-    if (!data.token) {
-      alert("需要登陆才行,登录后刷新页面");
-      return {};
-    }
-    const { userInfo: { oid, token } } = data;
-    return { oid, token };
-  })();
-  const videoData = { m3u8Data: "", downloadIndex: 0, title: "", urls: [] };
-  const updateVideoData = async (title, s3Key) => {
-    const { m3u8Data: m3u8Data2, urls } = await getm3u8data(s3Key);
-    videoData.title = title;
-    videoData.m3u8Data = m3u8Data2;
-    videoData.urls = urls;
-    videoData.downloadIndex = urls.length - 1;
-  };
   const getM3u8Url = (s3Key) => {
     const [type, num, hash] = s3Key.split("/");
     return `https://api.rplay.live/content/hlsstream?s3key=kr/${type}/${num}/${hash}/${hash}.m3u8&token=${userData.token}&userOid=${userData.oid}&contentOid=6515cda280c7fc6b98065cbe&loginType=plax&abr=false`;
   };
   const getContentData = async (contentId) => {
     const url = `https://api.rplay.live/content?contentOid=${contentId}&status=published&withComments=true&withContentMetadata=false&requestCanView=true&lang=jp&requestorOid=${userData.oid}&loginType=plax`;
-    const data = await (await fetch(url)).json();
-    const { title, modified, streamables } = data;
+    const data2 = await (await fetch(url)).json();
+    const { title, subtitles, modified, streamables } = data2;
+    const title1 = Object.values(subtitles || {})[0];
     const { s3key } = streamables[0];
     const { urls } = await getm3u8data(s3key);
     return {
-      title: formatTitle(title, modified),
+      title: formatTitle(title1 || title, modified),
       url: urls[urls.length - 1].url
     };
   };
@@ -97,7 +81,26 @@
     return { m3u8Data: m3u8Data2, urls };
   };
   const formatTitle = (title, modified) => {
-    return `[${modified.slice(0, 10)}] ${title.replaceAll(":", ".")}.ts`.replace(/[<>/\\? \*]/g, "");
+    if (modified)
+      modified = `[${modified.slice(0, 10)}]`;
+    return `${modified} ${title.replaceAll(":", ".")}.ts`.replace(/[<>/\\? \*]/g, "");
+  };
+  const userData = (() => {
+    const { AccountModule: data2 } = JSON.parse(localStorage.getItem("vuex") || `{}`);
+    if (!data2.token) {
+      alert("需要登陆才行,登录后刷新页面");
+      return {};
+    }
+    const { userInfo: { oid, token } } = data2;
+    return { oid, token };
+  })();
+  const videoData = { m3u8Data: "", downloadIndex: 0, title: "", urls: [] };
+  const updateVideoData = async (title, s3Key) => {
+    const { m3u8Data: m3u8Data2, urls } = await getm3u8data(s3Key);
+    videoData.title = title;
+    videoData.m3u8Data = m3u8Data2;
+    videoData.urls = urls;
+    videoData.downloadIndex = urls.length - 1;
   };
   const decrypt = (m3u8Data2, key) => {
     const encryptedData = new Uint8Array(m3u8Data2);
@@ -121,26 +124,36 @@
     return uint8Array;
   }
   const download1 = async (value, title, progress) => {
-    const getDir = await showDirectoryPicker({ mode: "readwrite" });
-    const save = async (url, title2) => {
+    const dir = await showDirectoryPicker({ mode: "readwrite" });
+    const save = async (dir2, url, title2) => {
       try {
-        await getDir.getFileHandle(title2);
+        await dir2.getFileHandle(title2);
         return true;
       } catch (error) {
-        const save2 = await (await getDir.getFileHandle(title2, { create: true })).createWritable();
+        const save2 = await (await dir2.getFileHandle(title2, { create: true })).createWritable();
         const { stream } = await download(url, progress);
         await stream.pipeTo(save2, { preventClose: true });
         return save2.close();
       }
     };
     if (typeof value === "string") {
-      return save(value, title);
+      return save(dir, value, title);
     }
     const updateProgress = progress(0);
+    let currentDir = { dir: void 0, name: "" };
     for (const item of value) {
-      const { title: title2, url } = await getContentData(item.id);
+      const { id, name, isCreatorhome } = item;
+      if (name) {
+        if (name !== currentDir.name) {
+          currentDir.dir = await getSaveDir(dir, name);
+          currentDir.name = name;
+        }
+      } else {
+        currentDir.dir = dir;
+      }
+      const { title: title2, url } = await getContentData(id);
       updateProgress.updateIndex();
-      const is = await save(url, title2);
+      const is = await save(currentDir.dir, url, title2);
       if (is)
         updateProgress.skip();
     }
@@ -163,9 +176,12 @@
         }
         const process = () => {
           return new Promise(async (res) => {
-            const item = value[i];
+            const { id, name } = value[i];
             updateProgress.updateIndex();
-            const { title: title2, url } = await getContentData(item.id);
+            let { title: title2, url } = await getContentData(id);
+            if (name) {
+              title2 = `${name}/${title2}`;
+            }
             const { stream } = await download(url, progress);
             ctrl.enqueue({ name: title2, stream: () => stream });
             i++;
@@ -211,6 +227,10 @@
     });
     return { stream };
   };
+  const getSaveDir = async (dir, name) => {
+    const saveDir = await dir.getDirectoryHandle(name, { create: true });
+    return saveDir;
+  };
   const initVideo = (m3u8Data2) => {
     const video = createVideo();
     const blob = new Blob([m3u8Data2], { type: "application/x-mpegURL" });
@@ -254,7 +274,7 @@
     const div = document.createElement("div");
     div.style.width = "100%";
     div.style.display = "flex";
-    div.style.marginTop = "0.7rem";
+    div.style.margin = "0.65rem 0";
     return div;
   };
   const createDOM = (name, fun) => {
@@ -267,6 +287,7 @@
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = tempDOM;
     const DOM = tempDiv.children[0];
+    DOM.style.userSelect = "none";
     DOM.onclick = fun;
     return DOM;
   };
@@ -291,8 +312,8 @@
     const input = document.createElement("input");
     input.type = type;
     input.style.position = "absolute";
-    input.style.width = "18px";
-    input.style.height = "18px";
+    input.style.width = "20px";
+    input.style.height = "20px";
     input.style.top = "0";
     input.style.left = "0";
     input.style.margin = "7px 7px";
@@ -387,94 +408,150 @@
       }, 250);
     });
   };
-  const initUserPageDOM = (contentIds, userName) => {
-    const selectList = contentIds.reduce((result, value) => {
-      result[value] = {
-        id: value,
-        isDown: false,
-        input: void 0
-      };
+  const data = {};
+  const updateNormalPosts = (normalPosts) => {
+    data.normalPosts = normalPosts.reduce((result, value) => {
+      result[value._id] = value.text;
       return result;
     }, {});
+  };
+  const initUserPageDOM = async (videoList, storyList, userName) => {
+    const processDom = initProgressDom();
+    const tipDom = initSelectDom(videoList, storyList);
+    const downDom = initDownDom(videoList, storyList, userName);
+    const listDOM = await addDOM([processDom, tipDom, downDom]);
+    listAddCheck(listDOM, videoList, storyList);
+  };
+  const initProgressDom = () => {
+    const processDom = createDivBox();
+    processDom.id = "processDom";
+    processDom.appendChild(createDOM("默认下载最高画质"));
+    return processDom;
+  };
+  const initSelectDom = (videoList, storyList) => {
     const tipDom = createDivBox();
-    const div = createDivBox();
-    tipDom.id = "tipDom";
-    addDOM(tipDom, div, selectList);
-    let isCheck = true;
-    let isDown = false;
-    tipDom.appendChild(createDOM("默认最高画质"));
+    let videoIsDown = true;
+    let storyIsDown = true;
     tipDom.appendChild(createDOM("(全部|取消)勾选", () => {
-      Object.values(selectList).forEach((p) => {
-        p.isDown = isCheck;
-        p.input.checked = isCheck;
+      Object.values(videoList).forEach((p) => {
+        if (!p.input)
+          return;
+        p.isDown = videoIsDown;
+        p.input.checked = videoIsDown;
       });
-      isCheck = !isCheck;
+      videoIsDown = !videoIsDown;
     }));
+    if (Object.values(storyList).length)
+      tipDom.appendChild(createDOM("(全部|取消)勾选合集", () => {
+        Object.values(storyList).forEach((p) => {
+          p.isDown = storyIsDown;
+          p.input.checked = storyIsDown;
+        });
+        storyIsDown = !storyIsDown;
+      }));
+    return tipDom;
+  };
+  const initDownDom = (videoList, storyList, userName) => {
+    const downDom = createDivBox();
+    let isDown = false;
     const down = async (downloadType) => {
       if (isDown) {
         alert("已经在下载中");
         return;
       }
       isDown = true;
-      const isList = Object.values(selectList).filter((p) => p.isDown);
-      if (!isList.length) {
-        alert("未选择视频");
+      const filterStorys = Object.values(storyList).filter((p) => p.isDown);
+      const storyIds = new Set(filterStorys.flatMap((p) => p.ids));
+      const downloadList = Object.values(videoList).filter((p) => {
+        return p.isDown || storyIds.has(p.id);
+      });
+      if (!downloadList.length) {
+        alert("未选择视频/合集");
         return;
       }
-      const { fun, remove } = createProgressDOM(isList.length);
+      const { fun, remove } = createProgressDOM(downloadList.length);
       try {
         if (downloadType === 1) {
-          await download1(isList, "", fun);
+          await download1(downloadList, "", fun);
         } else {
-          await download2(isList, `${userName}.zip`, fun);
+          await download2(downloadList, `${userName}.zip`, fun);
         }
         isDown = false;
       } catch (error) {
-        console.log(error);
+        console.warn(error);
         remove(3e3);
       }
     };
-    div.appendChild(createDOM("下载1 (会跳过已下载的文件)", () => {
+    downDom.appendChild(createDOM("下载1 (会跳过已下载的文件)", () => {
       down(1);
     }));
-    div.appendChild(createDOM("下载2 (压缩包)", () => {
+    downDom.appendChild(createDOM("下载2 (压缩包)", () => {
       down(2);
     }));
+    return downDom;
   };
-  const addDOM = (tipDom, dom, selectList) => {
-    var _a, _b;
-    const publishedContentDOM = [...document.querySelectorAll(".min-h-screen")];
-    const DOM = publishedContentDOM[publishedContentDOM.length - 1].firstChild.firstChild;
-    let listDOM = (_a = DOM.children[1]) == null ? void 0 : _a.children[1];
-    if (!listDOM)
-      listDOM = (_b = DOM.children[2]) == null ? void 0 : _b.children[1];
-    const firstDOM = DOM.children[1];
-    if (DOM.nodeName !== "DIV") {
-      setTimeout(() => {
-        addDOM(tipDom, dom, selectList);
-      }, 250);
-      return;
-    }
-    DOM.insertBefore(tipDom, firstDOM);
-    DOM.insertBefore(dom, firstDOM);
-    listAddCheck([...listDOM.children], selectList);
+  let unList = () => {
   };
-  const listAddCheck = (listDOM, selectList) => {
-    listDOM.forEach((dom) => {
+  const listAddCheck = (listDOM, videoList, storyList) => {
+    unList();
+    const ids = Object.keys(videoList);
+    const addFun = (dom) => {
+      var _a, _b;
+      dom.style.position = "relative";
       const url = dom.querySelector("a").href;
-      if (url.includes("scenario"))
-        return;
-      const id = url.split("play/")[1].replaceAll("/", "");
+      const { list, split } = url.includes("scenario") ? { list: storyList, split: "scenario/" } : { list: videoList, split: "play/" };
+      let id = (_a = url.split(split)[1]) == null ? void 0 : _a.replaceAll("/", "");
+      if (!id) {
+        if (!data.normalPosts)
+          return;
+        const id1 = (_b = url.split("creatorhome/")[1]) == null ? void 0 : _b.replace("/detail", "");
+        const text = data.normalPosts[id1];
+        id = ids.find((p) => text.includes(p));
+        if (!id)
+          return;
+      }
       const input = createInput("checkbox");
       input.onchange = () => {
-        selectList[id].isDown = input.checked;
+        list[id].isDown = input.checked;
       };
-      selectList[id].input = input;
+      list[id].input = input;
       dom.appendChild(input);
+    };
+    const observer = new MutationObserver(function(mutationRecoards, observer2) {
+      for (const item of mutationRecoards) {
+        if (item.type === "childList") {
+          const DOM = item.addedNodes[0];
+          addFun(DOM);
+        }
+      }
+    });
+    unList = () => {
+      observer.disconnect();
+    };
+    observer.observe(listDOM, { childList: true });
+    [...listDOM.children].forEach(addFun);
+  };
+  const addDOM = (doms) => {
+    return new Promise((res) => {
+      var _a;
+      const publishedContentDOM = [...document.querySelectorAll(".min-h-screen")];
+      const DOM = (_a = publishedContentDOM[publishedContentDOM.length - 1].firstChild) == null ? void 0 : _a.firstChild;
+      let listDOM = DOM.querySelectorAll(".grid");
+      if ((DOM == null ? void 0 : DOM.nodeName) === "DIV" && listDOM.length) {
+        const firstDOM = DOM.children[1];
+        doms.forEach((p) => {
+          DOM.insertBefore(p, firstDOM);
+        });
+        res(listDOM[0]);
+        return;
+      }
+      setTimeout(() => {
+        res(addDOM(doms));
+      }, 250);
     });
   };
   const createProgressDOM = (len) => {
-    const DOM = document.getElementById("tipDom");
+    const DOM = document.getElementById("processDom");
     const div = createDOM("");
     DOM.appendChild(div);
     const remove = (time = 5500) => {
@@ -562,15 +639,32 @@
     if (_url.includes("aeskey") && userData.token) {
       this.setRequestHeader("Age", String(Date.now()).slice(-4));
     }
-    if ((_url.includes("getuser?customUrl") || _url.includes("getuser?userOid")) && userData.token) {
+    if ((_url.includes("getuser?customUrl") || _url.includes("getuser?userOid") || _url.includes("replays?creatorOid")) && userData.token) {
       this.addEventListener("load", function() {
-        const { _id, metadataSet: { publishedContentSet }, nickname } = JSON.parse(this.response);
-        if (_id === userData.oid || !publishedContentSet)
-          return;
-        const contentIds = Object.keys(publishedContentSet);
-        if (!contentIds.length)
-          return;
-        initUserPageDOM(contentIds, nickname);
+        const data2 = JSON.parse(this.response);
+        const obj = {
+          ids: [],
+          storys: [],
+          nickname: ""
+        };
+        if (Array.isArray(data2) && data2.length) {
+          obj.ids = data2;
+        } else {
+          const { _id, metadataSet: { publishedContentSet, publishedScenarioSet, normalPosts }, nickname } = data2;
+          if (normalPosts == null ? void 0 : normalPosts.length) {
+            updateNormalPosts(normalPosts);
+            return;
+          }
+          if (_id === userData.oid || !publishedContentSet)
+            return;
+          obj.ids = Object.values(publishedContentSet);
+          obj.storys = Object.values(publishedScenarioSet);
+          obj.nickname = nickname;
+          if (!obj.ids.length)
+            return;
+        }
+        const { videoList, storyList } = processUserVideoList(obj.ids, obj.storys);
+        initUserPageDOM(videoList, storyList, obj.nickname);
       });
     }
     originalSend.apply(this, arguments);
@@ -578,6 +672,37 @@
   const init = async (title, s3Key) => {
     await updateVideoData(title, s3Key);
     initDOM();
+  };
+  const processUserVideoList = (contentIds, storys) => {
+    const ids = {};
+    const storyList = storys.reduce((result, value) => {
+      const contents = Object.keys(value.contents);
+      const name = formatTitle(value.metadata.title, "");
+      contents.forEach((p) => {
+        ids[p] = name;
+      });
+      result[value._id] = {
+        id: value._id,
+        name,
+        isDown: false,
+        input: void 0,
+        ids: contents
+      };
+      return result;
+    }, {});
+    const videoList = contentIds.reduce((result, value) => {
+      const { _id } = value;
+      const name = ids[_id];
+      result[_id] = {
+        id: _id,
+        isDown: false,
+        isCreatorhome: false,
+        input: void 0,
+        name
+      };
+      return result;
+    }, {});
+    return { videoList, storyList };
   };
 
 })(streamSaver, CryptoJS, videojs);
