@@ -67,12 +67,13 @@
     const url = `https://api.rplay.live/content?contentOid=${contentId}&status=published&withComments=true&withContentMetadata=false&requestCanView=true&lang=jp&requestorOid=${userData.oid}&loginType=plax`;
     const data2 = await (await fetch(url)).json();
     const { title, subtitles, modified, streamables } = data2;
-    const title1 = Object.values(subtitles || {})[0];
+    const title1 = Object.values(subtitles || {});
     const { s3key } = streamables[0];
-    const { urls } = await getm3u8data(s3key);
+    const { m3u8Data: m3u8Data2, urls } = await getm3u8data(s3key);
     return {
-      title: formatTitle(title1 || title, modified),
-      url: urls[urls.length - 1].url
+      title: formatTitle(title1[title1.length - 1] || title, modified),
+      url: urls[urls.length - 1].url,
+      m3u8Data: m3u8Data2
     };
   };
   const getm3u8data = async (s3Key) => {
@@ -231,11 +232,11 @@
     const saveDir = await dir.getDirectoryHandle(name, { create: true });
     return saveDir;
   };
-  const initVideo = (m3u8Data2) => {
-    const video = createVideo();
+  const initVideo = (m3u8Data2, element) => {
+    const video = createVideo(element);
     const blob = new Blob([m3u8Data2], { type: "application/x-mpegURL" });
     const url = URL.createObjectURL(blob);
-    videojs(video, {
+    const player = videojs(video, {
       controlBar: {
         pictureInPictureToggle: true
       },
@@ -254,9 +255,9 @@
       pip: true,
       enableDocumentPictureInPicture: false
     }, () => URL.revokeObjectURL(url));
+    return player;
   };
-  const createVideo = () => {
-    const VIDEODOM = document.querySelector(".w-player").children[0];
+  const createVideo = (element) => {
     const tempVideo = `
   <video id="myVideo" class="video-js vjs-big-play-centered vjs-fluid">
     <p class="vjs-no-js">
@@ -267,8 +268,8 @@
       </a>
     </p>
   </video>`;
-    VIDEODOM.innerHTML = tempVideo;
-    return VIDEODOM.children[0];
+    element.innerHTML = tempVideo;
+    return element.children[0];
   };
   const createDivBox = () => {
     const div = document.createElement("div");
@@ -281,7 +282,7 @@
     const tempDOM = `
   <div
     class="plax-button cursor-pointer px-4 py-2 hover:opacity-75 mb-2 mr-2 h-8 whitespace-nowrap px-4 text-md  bg-plaxgray-170 text-plaxgray-90"
-    style="border-radius: 6px; margin:0 8px 0 0;">
+    style="border-radius: 6px;">
     ${name}
   </div>`;
     const tempDiv = document.createElement("div");
@@ -322,14 +323,16 @@
   };
   const initDOM = async () => {
     const div = createDivBox();
-    await addDOM$1(div);
+    if (!await addDOM$1(div))
+      return;
     let isDown = false;
     const { title, downloadIndex, urls, m3u8Data: m3u8Data2 } = videoData;
     div.appendChild(createSelectDOM(videoData.urls, downloadIndex, (e) => {
       videoData.downloadIndex = +e.target.value;
     }));
     div.appendChild(createDOM("播放", () => {
-      initVideo(m3u8Data2);
+      const VIDEODOM = document.querySelector(".w-player").children[0];
+      initVideo(m3u8Data2, VIDEODOM);
     }));
     const down = async (index) => {
       if (isDown) {
@@ -359,6 +362,8 @@
   const createProgressDOM$1 = async () => {
     const divBox = createDivBox();
     const DOM = await addDOM$1(divBox);
+    if (!DOM)
+      return;
     const remove = (time = 5500) => {
       setTimeout(() => {
         DOM.removeChild(divBox);
@@ -394,8 +399,13 @@
       remove
     };
   };
-  const addDOM$1 = (dom) => {
+  const addDOM$1 = (dom, index = 0) => {
     return new Promise((res) => {
+      if (index > 4) {
+        res(void 0);
+        return;
+      }
+      ++index;
       const infoDOM = document.querySelector(".w-player").children[1];
       if ((infoDOM == null ? void 0 : infoDOM.nodeName) === "DIV") {
         const firstDOM = infoDOM.firstChild;
@@ -404,10 +414,42 @@
         return;
       }
       setTimeout(() => {
-        res(addDOM$1(dom));
+        res(addDOM$1(dom, index));
       }, 250);
     });
   };
+  let videoPlay = {};
+  const clipPlay = async (contentId) => {
+    if (!videoPlay.videoBox)
+      return;
+    videoPlay.open();
+    const { m3u8Data: m3u8Data2 } = await getContentData(contentId);
+    initVideo(m3u8Data2, videoPlay.videoBox);
+  };
+  const createMaskDOM = () => {
+    const mask = document.createElement("div");
+    const videoBox = document.createElement("div");
+    const closeVideo = document.createElement("div");
+    videoBox.style.height = `${window.innerHeight}px`;
+    closeVideo.innerText = "close";
+    mask.classList.add("mask");
+    videoBox.classList.add("videoBox");
+    closeVideo.classList.add("closeVideo");
+    mask.append(videoBox, closeVideo);
+    const open = () => {
+      mask.style.display = "flex";
+      videoBox.innerHTML = `<div style="color: #fff;">加载中</div>`;
+    };
+    const close = () => {
+      mask.style.display = "none";
+      videoBox.innerHTML = "";
+    };
+    closeVideo.onclick = close;
+    close();
+    document.body.appendChild(mask);
+    videoPlay = { mask, videoBox, closeVideo, open, close };
+  };
+  let unObserverList = [];
   const data = {};
   const updateNormalPosts = (normalPosts) => {
     data.normalPosts = normalPosts.reduce((result, value) => {
@@ -416,11 +458,15 @@
     }, {});
   };
   const initUserPageDOM = async (videoList, storyList, userName) => {
+    unObserverList.forEach((p) => p());
+    unObserverList = [];
     const processDom = initProgressDom();
     const tipDom = initSelectDom(videoList, storyList);
     const downDom = initDownDom(videoList, storyList, userName);
-    const listDOM = await addDOM([processDom, tipDom, downDom]);
-    listAddCheck(listDOM, videoList, storyList);
+    const [listDOM, clipDOM] = await addDOM([processDom, tipDom, downDom]);
+    listAddCheck(false, listDOM, [videoList, storyList]);
+    if (clipDOM)
+      listAddCheck(true, clipDOM, [videoList], clipPlay);
   };
   const initProgressDom = () => {
     const processDom = createDivBox();
@@ -490,33 +536,57 @@
     }));
     return downDom;
   };
-  let unList = () => {
-  };
-  const listAddCheck = (listDOM, videoList, storyList) => {
-    unList();
-    const ids = Object.keys(videoList);
-    const addFun = (dom) => {
-      var _a, _b;
-      dom.style.position = "relative";
-      const url = dom.querySelector("a").href;
-      const { list, split } = url.includes("scenario") ? { list: storyList, split: "scenario/" } : { list: videoList, split: "play/" };
-      let id = (_a = url.split(split)[1]) == null ? void 0 : _a.replaceAll("/", "");
-      if (!id) {
-        if (!data.normalPosts)
+  const listAddCheck = (isClip, listDOM, dataList, fun) => {
+    const [videoList, storyList] = dataList;
+    let addFun = void 0;
+    if (isClip) {
+      const ids = Object.values(videoList);
+      addFun = (dom, index = 0) => {
+        if (dom.textContent.length < 10) {
+          if (index++ < 5)
+            setTimeout(() => {
+              addFun(dom, index);
+            }, 250);
           return;
-        const id1 = (_b = url.split("creatorhome/")[1]) == null ? void 0 : _b.replace("/detail", "");
-        const text = data.normalPosts[id1];
-        id = ids.find((p) => text.includes(p));
-        if (!id)
-          return;
-      }
-      const input = createInput("checkbox");
-      input.onchange = () => {
-        list[id].isDown = input.checked;
+        }
+        const { id } = ids.find((p) => dom.textContent.includes(p.orName)) || {};
+        if (id) {
+          const input = createInput("checkbox");
+          const playDOM = createDOM("play");
+          playDOM.classList.add("playDOM");
+          playDOM.onclick = () => fun(videoList[id].id);
+          input.onchange = () => {
+            videoList[id].isDown = input.checked;
+          };
+          videoList[id].input = input;
+          dom.append(input, playDOM);
+        }
       };
-      list[id].input = input;
-      dom.appendChild(input);
-    };
+    } else {
+      const ids = Object.keys(videoList);
+      addFun = (dom) => {
+        var _a, _b;
+        dom.style.position = "relative";
+        const url = dom.querySelector("a").href;
+        const { list, split } = url.includes("scenario") ? { list: storyList, split: "scenario/" } : { list: videoList, split: "play/" };
+        let id = (_a = url.split(split)[1]) == null ? void 0 : _a.replaceAll("/", "");
+        if (!id) {
+          if (!data.normalPosts)
+            return;
+          const id1 = (_b = url.split("creatorhome/")[1]) == null ? void 0 : _b.replace("/detail", "");
+          const text = data.normalPosts[id1];
+          id = ids.find((p) => text.includes(p));
+          if (!id)
+            return;
+        }
+        const input = createInput("checkbox");
+        input.onchange = () => {
+          list[id].isDown = input.checked;
+        };
+        list[id].input = input;
+        dom.appendChild(input);
+      };
+    }
     const observer = new MutationObserver(function(mutationRecoards, observer2) {
       for (const item of mutationRecoards) {
         if (item.type === "childList") {
@@ -525,9 +595,9 @@
         }
       }
     });
-    unList = () => {
+    unObserverList.push(() => {
       observer.disconnect();
-    };
+    });
     observer.observe(listDOM, { childList: true });
     [...listDOM.children].forEach(addFun);
   };
@@ -542,7 +612,8 @@
         doms.forEach((p) => {
           DOM.insertBefore(p, firstDOM);
         });
-        res(listDOM[0]);
+        let clipDOM = document.querySelector(".vue-recycle-scroller__item-wrapper");
+        res([listDOM[0], clipDOM]);
         return;
       }
       setTimeout(() => {
@@ -597,6 +668,7 @@
       remove
     };
   };
+  createMaskDOM();
   const script = document.createElement("script");
   script.setAttribute("type", "text/javascript");
   script.src = "https://cdn.jsdelivr.net/npm/web-streams-polyfill@3.2.1/dist/ponyfill.min.js";
@@ -608,14 +680,60 @@
   document.head.appendChild(link);
   const style = document.createElement("style");
   style.innerHTML = `
+.video-js {
+  padding-top: 56.25% !important;
+}
 .video-js .vjs-time-control,
 .video-js .vjs-control,
-.vjs-playback-rate .vjs-playback-rate-value{
+.vjs-playback-rate .vjs-playback-rate-value {
   display: flex;
   align-items: center;
 }
-.vjs-control-bar{
+.vjs-control-bar {
   align-items: center !important;
+}
+.mask {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #00000090;
+  z-index: 100000;
+}
+.closeVideo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 6px;
+  padding: 0 5px;
+  border-radius: 20px;
+  height: 30px;
+  line-height: 30px;
+  background-color: white;
+  cursor: pointer;
+}
+.playDOM {
+  border-radius: 6px;
+  user-select: none;
+  position: absolute;
+  top: 0px;
+  left: 24px;
+  margin: 7px;
+  z-index: 99999;
+  height: 28px;
+  line-height: 1.3;
+  padding: 7px !important;
+  margin-top: 3px !important;
+}
+.videoBox {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 `;
   document.head.appendChild(style);
@@ -691,14 +809,15 @@
       return result;
     }, {});
     const videoList = contentIds.reduce((result, value) => {
-      const { _id } = value;
+      const { _id, title } = value;
       const name = ids[_id];
       result[_id] = {
         id: _id,
         isDown: false,
         isCreatorhome: false,
         input: void 0,
-        name
+        name,
+        orName: title
       };
       return result;
     }, {});

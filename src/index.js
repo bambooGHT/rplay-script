@@ -11,8 +11,10 @@
 // ==/UserScript==
 
 import { userData, updateVideoData } from "./data";
-import { initDOM, initUserPageDOM, updateNormalPosts } from "./dom";
+import { createMaskDOM, initDOM, initUserPageDOM, updateNormalPosts } from "./dom";
 import { formatTitle } from "./get";
+
+createMaskDOM();
 
 const script = document.createElement('script');
 script.setAttribute('type', 'text/javascript');
@@ -27,14 +29,60 @@ document.head.appendChild(link);
 
 const style = document.createElement("style");
 style.innerHTML = `
+.video-js {
+  padding-top: 56.25% !important;
+}
 .video-js .vjs-time-control,
 .video-js .vjs-control,
-.vjs-playback-rate .vjs-playback-rate-value{
+.vjs-playback-rate .vjs-playback-rate-value {
   display: flex;
   align-items: center;
 }
-.vjs-control-bar{
+.vjs-control-bar {
   align-items: center !important;
+}
+.mask {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #00000090;
+  z-index: 100000;
+}
+.closeVideo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 6px;
+  padding: 0 5px;
+  border-radius: 20px;
+  height: 30px;
+  line-height: 30px;
+  background-color: white;
+  cursor: pointer;
+}
+.playDOM {
+  border-radius: 6px;
+  user-select: none;
+  position: absolute;
+  top: 0px;
+  left: 24px;
+  margin: 7px;
+  z-index: 99999;
+  height: 28px;
+  line-height: 1.3;
+  padding: 7px !important;
+  margin-top: 3px !important;
+}
+.videoBox {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 `;
 document.head.appendChild(style);
@@ -119,7 +167,7 @@ const processUserVideoList = (contentIds, storys) => {
   }, {});
 
   const videoList = contentIds.reduce((result, value) => {
-    const { _id } = value;
+    const { _id, title } = value;
     const name = ids[_id];
     result[_id] = {
       id: _id,
@@ -127,6 +175,7 @@ const processUserVideoList = (contentIds, storys) => {
       isCreatorhome: false,
       input: undefined,
       name: name,
+      orName: title
     };
     return result;
   }, {});

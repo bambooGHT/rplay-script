@@ -1,12 +1,12 @@
 import { videoData } from "../data";
 import { download1, download2 } from "../download";
 import { clacSize } from "../get";
-import { initVideo } from "../play";
+import { initVideo } from "./play";
 import { createDOM, createDivBox, createSelectDOM } from "./createDOM";
 
 export const initDOM = async () => {
   const div = createDivBox();
-  await addDOM(div);
+  if (!await addDOM(div)) return;
 
   let isDown = false;
   const { title, downloadIndex, urls, m3u8Data } = videoData;
@@ -14,7 +14,8 @@ export const initDOM = async () => {
     videoData.downloadIndex = +e.target.value;
   }));
   div.appendChild(createDOM("播放", () => {
-    initVideo(m3u8Data);
+    const VIDEODOM = document.querySelector(".w-player").children[0];
+    initVideo(m3u8Data, VIDEODOM);
   }));
 
   const down = async (index) => {
@@ -47,6 +48,7 @@ export const initDOM = async () => {
 const createProgressDOM = async () => {
   const divBox = createDivBox();
   const DOM = await addDOM(divBox);
+  if (!DOM) return;
   const remove = (time = 5500) => {
     setTimeout(() => {
       DOM.removeChild(divBox);
@@ -86,8 +88,13 @@ const createProgressDOM = async () => {
   };
 };
 
-const addDOM = (dom) => {
+const addDOM = (dom, index = 0) => {
   return new Promise((res) => {
+    if (index > 4) {
+      res(undefined);
+      return;
+    }
+    ++index;
     const infoDOM = document.querySelector(".w-player").children[1];
 
     if (infoDOM?.nodeName === "DIV") {
@@ -98,7 +105,7 @@ const addDOM = (dom) => {
     }
 
     setTimeout(() => {
-      res(addDOM(dom));
+      res(addDOM(dom, index));
     }, 250);
   });
 };

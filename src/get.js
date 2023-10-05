@@ -68,13 +68,14 @@ export const getContentData = async (contentId) => {
   const url = `https://api.rplay.live/content?contentOid=${contentId}&status=published&withComments=true&withContentMetadata=false&requestCanView=true&lang=jp&requestorOid=${userData.oid}&loginType=plax`;
   const data = await (await fetch(url)).json();
   const { title, subtitles, modified, streamables } = data;
-  const title1 = Object.values(subtitles || {})[0];
+  const title1 = Object.values(subtitles || {});
   const { s3key } = streamables[0];
-  const { urls } = await getm3u8data(s3key);
+  const { m3u8Data, urls } = await getm3u8data(s3key);
 
   return {
-    title: formatTitle((title1 || title), modified),
-    url: urls[urls.length - 1].url
+    title: formatTitle((title1[title1.length - 1] || title), modified),
+    url: urls[urls.length - 1].url,
+    m3u8Data
   };
 };
 

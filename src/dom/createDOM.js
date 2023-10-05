@@ -14,7 +14,7 @@ export const createDOM = (name, fun) => {
   const tempDOM = `
   <div
     class="plax-button cursor-pointer px-4 py-2 hover:opacity-75 mb-2 mr-2 h-8 whitespace-nowrap px-4 text-md  bg-plaxgray-170 text-plaxgray-90"
-    style="border-radius: 6px; margin:0 8px 0 0;">
+    style="border-radius: 6px;">
     ${name}
   </div>`;
   const tempDiv = document.createElement('div');

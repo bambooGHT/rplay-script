@@ -1,9 +1,10 @@
 import videojs from "video.js";
 /**
  * @param {string} m3u8Data 
+ * @param {HTMLDivElement} element 
  */
-export const initVideo = (m3u8Data) => {
-  const video = createVideo();
+export const initVideo = (m3u8Data, element) => {
+  const video = createVideo(element);
   const blob = new Blob([m3u8Data], { type: "application/x-mpegURL" });
   const url = URL.createObjectURL(blob);
   const player = videojs(video, {
@@ -25,10 +26,11 @@ export const initVideo = (m3u8Data) => {
     pip: true,
     enableDocumentPictureInPicture: false
   }, () => URL.revokeObjectURL(url));
+
+  return player;
 };
 
-const createVideo = () => {
-  const VIDEODOM = document.querySelector(".w-player").children[0];
+const createVideo = (element) => {
   const tempVideo = `
   <video id="myVideo" class="video-js vjs-big-play-centered vjs-fluid">
     <p class="vjs-no-js">
@@ -39,7 +41,7 @@ const createVideo = () => {
       </a>
     </p>
   </video>`;
-  VIDEODOM.innerHTML = tempVideo;
+  element.innerHTML = tempVideo;
 
-  return VIDEODOM.children[0];
+  return element.children[0];
 };

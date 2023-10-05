@@ -1,12 +1,14 @@
 import { createDivBox, createDOM, createInput } from "./createDOM";
 import { download1, download2 } from "../download";
 import { clacSize } from "../get";
+import { clipPlay } from "./clipsPlay";
 
 /**
  * @typedef {import("../types.js").VideoList} VideoList 
  * @typedef {import("../types.js").StoryList} StoryList
  */
 
+let unObserverList = [];
 /** @type {{normalPosts:Record<string,string>}} */
 const data = {};
 export const updateNormalPosts = (normalPosts) => {
@@ -21,13 +23,16 @@ export const updateNormalPosts = (normalPosts) => {
  * @param {string} userName 
  */
 export const initUserPageDOM = async (videoList, storyList, userName) => {
+  unObserverList.forEach(p => p());
+  unObserverList = [];
 
   const processDom = initProgressDom();
   const tipDom = initSelectDom(videoList, storyList);
   const downDom = initDownDom(videoList, storyList, userName);
 
-  const listDOM = await addDOM([processDom, tipDom, downDom]);
-  listAddCheck(listDOM, videoList, storyList);
+  const [listDOM, clipDOM] = await addDOM([processDom, tipDom, downDom]);
+  listAddCheck(false, listDOM, [videoList, storyList]);
+  if (clipDOM) listAddCheck(true, clipDOM, [videoList], clipPlay);
 };
 
 const initProgressDom = () => {
@@ -114,40 +119,64 @@ const initDownDom = (videoList, storyList, userName) => {
   return downDom;
 };
 
-let unList = () => { };
 
 /**
+ * @param {boolean} isClip
  * @param {HTMLDivElement} listDOM
- * @param {VideoList} videoList 
- * @param {StoryList} storyList
+ * @param {[VideoList,StoryList]} dataList 
+ * @param {(id:string)=>void} fun 
  */
-const listAddCheck = (listDOM, videoList, storyList) => {
-  unList();
+const listAddCheck = (isClip, listDOM, dataList, fun) => {
+  const [videoList, storyList] = dataList;
+  let addFun = undefined;
+  if (isClip) {
+    const ids = Object.values(videoList);
+    addFun = (dom, index = 0) => {
+      if (dom.textContent.length < 10) {
+        if (index++ < 5) setTimeout(() => {
+          addFun(dom, index);
+        }, 250);
+        return;
+      }
+      const { id } = ids.find(p => dom.textContent.includes(p.orName)) || {};
 
-  const ids = Object.keys(videoList);
+      if (id) {
+        const input = createInput("checkbox");
+        const playDOM = createDOM("play");
 
-  const addFun = (dom) => {
-    dom.style.position = "relative";
+        playDOM.classList.add("playDOM");
+        playDOM.onclick = () => fun(videoList[id].id);
+        input.onchange = () => { videoList[id].isDown = input.checked; };
 
-    const url = dom.querySelector("a").href;
-    const { list, split } = url.includes("scenario") ?
-      { list: storyList, split: "scenario/" } : { list: videoList, split: "play/" };
-
-    let id = url.split(split)[1]?.replaceAll("/", "");
-
-    if (!id) {
-      if (!data.normalPosts) return;
-      const id1 = url.split("creatorhome/")[1]?.replace("/detail", "");
-      const text = data.normalPosts[id1];
-      id = ids.find(p => text.includes(p));
-      if (!id) return;
+        videoList[id].input = input;
+        dom.append(input, playDOM);
+      }
     };
+  } else {
+    const ids = Object.keys(videoList);
+    addFun = (dom) => {
+      dom.style.position = "relative";
 
-    const input = createInput("checkbox");
-    input.onchange = () => { list[id].isDown = input.checked; };
-    list[id].input = input;
-    dom.appendChild(input);
-  };
+      const url = dom.querySelector("a").href;
+      const { list, split } = url.includes("scenario") ?
+        { list: storyList, split: "scenario/" } : { list: videoList, split: "play/" };
+
+      let id = url.split(split)[1]?.replaceAll("/", "");
+
+      if (!id) {
+        if (!data.normalPosts) return;
+        const id1 = url.split("creatorhome/")[1]?.replace("/detail", "");
+        const text = data.normalPosts[id1];
+        id = ids.find(p => text.includes(p));
+        if (!id) return;
+      };
+
+      const input = createInput("checkbox");
+      input.onchange = () => { list[id].isDown = input.checked; };
+      list[id].input = input;
+      dom.appendChild(input);
+    };
+  }
 
   const observer = new MutationObserver(function (mutationRecoards, observer) {
     for (const item of mutationRecoards) {
@@ -159,9 +188,10 @@ const listAddCheck = (listDOM, videoList, storyList) => {
     }
   });
 
-  unList = () => {
+  unObserverList.push(() => {
     observer.disconnect();
-  };
+  });
+
   observer.observe(listDOM, { childList: true });
 
   [...listDOM.children].forEach(addFun);
@@ -183,7 +213,8 @@ const addDOM = (doms) => {
         DOM.insertBefore(p, firstDOM);
       });
 
-      res(listDOM[0]);
+      let clipDOM = document.querySelector(".vue-recycle-scroller__item-wrapper");
+      res([listDOM[0], clipDOM]);
       return;
     }
 
