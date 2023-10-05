@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.3.0
+// @version      1.3.1
 // @author       bambooGHT
-// @description  添加对合集视频的下载,下载时会排除跟合集里相同的视频,修复部分bug
+// @description  现在可以播放短视频跟下载了
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
