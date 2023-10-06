@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.3.2
+// @version      1.3.3
 // @author       bambooGHT
 // @description  现在手机也能正常使用了
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
