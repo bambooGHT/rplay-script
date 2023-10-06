@@ -9,7 +9,7 @@ export default defineConfig({
       userscript: {
         name: "rplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.3.2",
+        version: "1.3.3",
         description: "现在手机也能正常使用了",
         author: "bambooGHT",
         match: [
