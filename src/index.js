@@ -30,13 +30,19 @@ document.head.appendChild(link);
 const style = document.createElement("style");
 style.innerHTML = `
 .video-js {
-  padding-top: 56.25% !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
 }
 .video-js .vjs-time-control,
 .video-js .vjs-control,
 .vjs-playback-rate .vjs-playback-rate-value {
   display: flex;
   align-items: center;
+}
+.vjs-play-control {
+  justify-content: center !important;
 }
 .vjs-control-bar {
   align-items: center !important;
@@ -90,6 +96,11 @@ document.head.appendChild(style);
 const originalOpen = XMLHttpRequest.prototype.open;
 const originalSend = XMLHttpRequest.prototype.send;
 
+let currentUser = {
+  time: 0,
+  userId: ""
+};
+
 XMLHttpRequest.prototype.open = function (method, url) {
   this._url = url;
   originalOpen.apply(this, arguments);
@@ -126,8 +137,12 @@ XMLHttpRequest.prototype.send = function () {
           updateNormalPosts(normalPosts);
           return;
         }
+        const time = Date.now();
+        if (_id === userData.oid || !publishedContentSet ||
+          (currentUser.userId === _id && time - currentUser.time < 2500)) return;
+        currentUser.userId = _id;
+        currentUser.time = time;
 
-        if (_id === userData.oid || !publishedContentSet) return;
         obj.ids = Object.values(publishedContentSet);
         obj.storys = Object.values(publishedScenarioSet);
         obj.nickname = nickname;

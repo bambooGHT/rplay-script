@@ -36,7 +36,7 @@ export const initUserPageDOM = async (videoList, storyList, userName) => {
 };
 
 const initProgressDom = () => {
-  const processDom = createDivBox();
+  const processDom = createDivBox("0.55rem 0 0");
   processDom.id = "processDom";
   processDom.appendChild(createDOM("默认下载最高画质"));
 
@@ -44,7 +44,7 @@ const initProgressDom = () => {
 };
 
 const initSelectDom = (videoList, storyList) => {
-  const tipDom = createDivBox();
+  const tipDom = createDivBox("0.1rem 0 0");
   let videoIsDown = true;
   let storyIsDown = true;
 
@@ -73,7 +73,7 @@ const initSelectDom = (videoList, storyList) => {
  * @param {string} userName 
  */
 const initDownDom = (videoList, storyList, userName) => {
-  const downDom = createDivBox();
+  const downDom = createDivBox("0.1rem 0 0");
 
   let isDown = false;
   const down = async (downloadType) => {
@@ -198,7 +198,7 @@ const listAddCheck = (isClip, listDOM, dataList, fun) => {
 };
 /**
  * @param {HTMLDivElement[]} doms 
- * @returns {Promise<HTMLDivElement>}
+ * @returns {Promise<[HTMLDivElement,HTMLDivElement]>}
  */
 const addDOM = (doms) => {
   return new Promise((res) => {

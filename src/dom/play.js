@@ -11,6 +11,8 @@ export const initVideo = (m3u8Data, element) => {
     controlBar: {
       pictureInPictureToggle: true,
     },
+    fluid: true,
+    aspectRatio: "16:9",
     controls: true,
     autoplay: false,
     loop: false,

@@ -5,8 +5,9 @@ import { initVideo } from "./play";
 import { createDOM, createDivBox, createSelectDOM } from "./createDOM";
 
 export const initDOM = async () => {
-  const div = createDivBox();
-  if (!await addDOM(div)) return;
+  const div = createDivBox("0.55rem 0 0 5px");
+  const div1 = createDivBox("0 0 0 5px");
+  if (!await addDOM([div, div1])) return;
 
   let isDown = false;
   const { title, downloadIndex, urls, m3u8Data } = videoData;
@@ -14,7 +15,7 @@ export const initDOM = async () => {
     videoData.downloadIndex = +e.target.value;
   }));
   div.appendChild(createDOM("播放", () => {
-    const VIDEODOM = document.querySelector(".w-player").children[0];
+    const VIDEODOM = document.querySelector("#play-view").children[0].children[0].children[0];
     initVideo(m3u8Data, VIDEODOM);
   }));
 
@@ -37,17 +38,17 @@ export const initDOM = async () => {
     }
   };
 
-  div.appendChild(createDOM("下载1 (Chrome | edge)", () => {
+  div1.appendChild(createDOM("下载1 (Chrome | edge)(推荐)", () => {
     down(1);
   }));
-  div.appendChild(createDOM("下载2", () => {
+  div1.appendChild(createDOM("下载2", () => {
     down(2);
   }));
 };
 
 const createProgressDOM = async () => {
   const divBox = createDivBox();
-  const DOM = await addDOM(divBox);
+  const DOM = await addDOM([divBox]);
   if (!DOM) return;
   const remove = (time = 5500) => {
     setTimeout(() => {
@@ -88,24 +89,27 @@ const createProgressDOM = async () => {
   };
 };
 
-const addDOM = (dom, index = 0) => {
+const addDOM = (doms, index = 0) => {
   return new Promise((res) => {
     if (index > 4) {
       res(undefined);
       return;
     }
     ++index;
-    const infoDOM = document.querySelector(".w-player").children[1];
+    const infoDOM = document.querySelector(".text-lg")?.parentElement?.parentElement;
 
     if (infoDOM?.nodeName === "DIV") {
+      if (!document.URL.includes("play/")) return;
       const firstDOM = infoDOM.firstChild;
-      infoDOM.insertBefore(dom, firstDOM);
+      doms.forEach((dom) => {
+        infoDOM.insertBefore(dom, firstDOM);
+      });
       res(infoDOM);
       return;
     }
 
     setTimeout(() => {
-      res(addDOM(dom, index));
+      res(addDOM(doms, index));
     }, 250);
   });
 };

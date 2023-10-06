@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.3.1
+// @version      1.3.2
 // @author       bambooGHT
-// @description  现在可以播放短视频跟下载了
+// @description  现在手机也能正常使用了
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
@@ -240,6 +240,8 @@
       controlBar: {
         pictureInPictureToggle: true
       },
+      fluid: true,
+      aspectRatio: "16:9",
       controls: true,
       autoplay: false,
       loop: false,
@@ -271,11 +273,11 @@
     element.innerHTML = tempVideo;
     return element.children[0];
   };
-  const createDivBox = () => {
+  const createDivBox = (margin = "0") => {
     const div = document.createElement("div");
     div.style.width = "100%";
     div.style.display = "flex";
-    div.style.margin = "0.65rem 0";
+    div.style.margin = margin;
     return div;
   };
   const createDOM = (name, fun) => {
@@ -322,8 +324,9 @@
     return input;
   };
   const initDOM = async () => {
-    const div = createDivBox();
-    if (!await addDOM$1(div))
+    const div = createDivBox("0.55rem 0 0 5px");
+    const div1 = createDivBox("0 0 0 5px");
+    if (!await addDOM$1([div, div1]))
       return;
     let isDown = false;
     const { title, downloadIndex, urls, m3u8Data: m3u8Data2 } = videoData;
@@ -331,7 +334,7 @@
       videoData.downloadIndex = +e.target.value;
     }));
     div.appendChild(createDOM("播放", () => {
-      const VIDEODOM = document.querySelector(".w-player").children[0];
+      const VIDEODOM = document.querySelector("#play-view").children[0].children[0].children[0];
       initVideo(m3u8Data2, VIDEODOM);
     }));
     const down = async (index) => {
@@ -352,16 +355,16 @@
         remove(3e3);
       }
     };
-    div.appendChild(createDOM("下载1 (Chrome | edge)", () => {
+    div1.appendChild(createDOM("下载1 (Chrome | edge)(推荐)", () => {
       down(1);
     }));
-    div.appendChild(createDOM("下载2", () => {
+    div1.appendChild(createDOM("下载2", () => {
       down(2);
     }));
   };
   const createProgressDOM$1 = async () => {
     const divBox = createDivBox();
-    const DOM = await addDOM$1(divBox);
+    const DOM = await addDOM$1([divBox]);
     if (!DOM)
       return;
     const remove = (time = 5500) => {
@@ -399,22 +402,27 @@
       remove
     };
   };
-  const addDOM$1 = (dom, index = 0) => {
+  const addDOM$1 = (doms, index = 0) => {
     return new Promise((res) => {
+      var _a, _b;
       if (index > 4) {
         res(void 0);
         return;
       }
       ++index;
-      const infoDOM = document.querySelector(".w-player").children[1];
+      const infoDOM = (_b = (_a = document.querySelector(".text-lg")) == null ? void 0 : _a.parentElement) == null ? void 0 : _b.parentElement;
       if ((infoDOM == null ? void 0 : infoDOM.nodeName) === "DIV") {
+        if (!document.URL.includes("play/"))
+          return;
         const firstDOM = infoDOM.firstChild;
-        infoDOM.insertBefore(dom, firstDOM);
+        doms.forEach((dom) => {
+          infoDOM.insertBefore(dom, firstDOM);
+        });
         res(infoDOM);
         return;
       }
       setTimeout(() => {
-        res(addDOM$1(dom, index));
+        res(addDOM$1(doms, index));
       }, 250);
     });
   };
@@ -469,13 +477,13 @@
       listAddCheck(true, clipDOM, [videoList], clipPlay);
   };
   const initProgressDom = () => {
-    const processDom = createDivBox();
+    const processDom = createDivBox("0.55rem 0 0");
     processDom.id = "processDom";
     processDom.appendChild(createDOM("默认下载最高画质"));
     return processDom;
   };
   const initSelectDom = (videoList, storyList) => {
-    const tipDom = createDivBox();
+    const tipDom = createDivBox("0.1rem 0 0");
     let videoIsDown = true;
     let storyIsDown = true;
     tipDom.appendChild(createDOM("(全部|取消)勾选", () => {
@@ -498,7 +506,7 @@
     return tipDom;
   };
   const initDownDom = (videoList, storyList, userName) => {
-    const downDom = createDivBox();
+    const downDom = createDivBox("0.1rem 0 0");
     let isDown = false;
     const down = async (downloadType) => {
       if (isDown) {
@@ -681,13 +689,19 @@
   const style = document.createElement("style");
   style.innerHTML = `
 .video-js {
-  padding-top: 56.25% !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
 }
 .video-js .vjs-time-control,
 .video-js .vjs-control,
 .vjs-playback-rate .vjs-playback-rate-value {
   display: flex;
   align-items: center;
+}
+.vjs-play-control {
+  justify-content: center !important;
 }
 .vjs-control-bar {
   align-items: center !important;
@@ -739,6 +753,10 @@
   document.head.appendChild(style);
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
+  let currentUser = {
+    time: 0,
+    userId: ""
+  };
   XMLHttpRequest.prototype.open = function(method, url) {
     this._url = url;
     originalOpen.apply(this, arguments);
@@ -773,8 +791,11 @@
             updateNormalPosts(normalPosts);
             return;
           }
-          if (_id === userData.oid || !publishedContentSet)
+          const time = Date.now();
+          if (_id === userData.oid || !publishedContentSet || currentUser.userId === _id && time - currentUser.time < 2500)
             return;
+          currentUser.userId = _id;
+          currentUser.time = time;
           obj.ids = Object.values(publishedContentSet);
           obj.storys = Object.values(publishedScenarioSet);
           obj.nickname = nickname;

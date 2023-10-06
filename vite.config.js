@@ -9,8 +9,8 @@ export default defineConfig({
       userscript: {
         name: "rplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.3.1",
-        description: "现在可以播放短视频跟下载了",
+        version: "1.3.2",
+        description: "现在手机也能正常使用了",
         author: "bambooGHT",
         match: [
           "https://rplay.live/*"

@@ -1,8 +1,8 @@
-export const createDivBox = () => {
+export const createDivBox = (margin = "0") => {
   const div = document.createElement("div");
   div.style.width = "100%";
   div.style.display = "flex";
-  div.style.margin = "0.65rem 0";
+  div.style.margin = margin;
 
   return div;
 };
@@ -23,7 +23,7 @@ export const createDOM = (name, fun) => {
   const DOM = tempDiv.children[0];
   DOM.style.userSelect = "none";
   DOM.onclick = fun;
-  
+
   return DOM;
 };
 /**
