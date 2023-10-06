@@ -1,11 +1,12 @@
-import { lib, mode, pad, AES } from 'crypto-js';
-
+import { CryptoJS } from '../package';
 /** 解密
  * @param {ArrayBuffer} m3u8Data 
  * @param {ArrayBuffer} key 
  * @requires Uint8Array
  */
 export const decrypt = (m3u8Data, key) => {
+  const { lib, mode, pad, AES } = CryptoJS;
+
   const encryptedData = new Uint8Array(m3u8Data);
   const ciphertext = lib.WordArray.create(encryptedData);
   const Key = lib.WordArray.create(key);

@@ -1,4 +1,4 @@
-import { createWriteStream } from "streamsaver";
+import { streamsaver } from "../package";
 import { getDownloadUrlListAndKey, getContentData } from "../get";
 import { decrypt } from "./crypto";
 
@@ -45,7 +45,7 @@ export const download1 = async (value, title, progress) => {
 };
 /** @type {DownloadFun} */
 export const download2 = async (value, title, progress) => {
-  const zipFileOutputStream = createWriteStream(title);
+  const zipFileOutputStream = streamsaver.createWriteStream(title);
 
 
 

@@ -1,4 +1,4 @@
-import videojs from "video.js";
+import { videojs } from "../package";
 /**
  * @param {string} m3u8Data 
  * @param {HTMLDivElement} element 

@@ -8,14 +8,10 @@
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @match        https://rplay.live/*
-// @require      https://jimmywarting.github.io/StreamSaver.js/examples/zip-stream.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js
-// @require      https://cdn.jsdelivr.net/npm/streamsaver@2.0.6/StreamSaver.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/video.js/8.5.2/video.min.js
 // @grant        none
 // ==/UserScript==
 
-(function (streamsaver, cryptoJs, videojs) {
+(function () {
   'use strict';
 
   const getDownloadUrlListAndKey = async (url) => {
@@ -103,16 +99,20 @@
     videoData.urls = urls;
     videoData.downloadIndex = urls.length - 1;
   };
+  const videojs = window.videojs;
+  const CryptoJS = window.CryptoJS;
+  const streamsaver = window.streamSaver;
   const decrypt = (m3u8Data2, key) => {
+    const { lib, mode, pad, AES } = CryptoJS;
     const encryptedData = new Uint8Array(m3u8Data2);
-    const ciphertext = cryptoJs.lib.WordArray.create(encryptedData);
-    const Key = cryptoJs.lib.WordArray.create(key);
+    const ciphertext = lib.WordArray.create(encryptedData);
+    const Key = lib.WordArray.create(key);
     const ops = {
-      iv: cryptoJs.lib.WordArray.create(16),
-      mode: cryptoJs.mode.CBC,
-      padding: cryptoJs.pad.Pkcs7
+      iv: lib.WordArray.create(16),
+      mode: mode.CBC,
+      padding: pad.Pkcs7
     };
-    const decrypted = cryptoJs.AES.decrypt({ ciphertext }, Key, ops);
+    const decrypted = AES.decrypt({ ciphertext }, Key, ops);
     return wordArrayToUint8Array(decrypted);
   };
   function wordArrayToUint8Array(wordArray) {
@@ -676,11 +676,19 @@
       remove
     };
   };
+  const scripts = [
+    "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js",
+    "https://cdn.jsdelivr.net/npm/streamsaver@2.0.6/StreamSaver.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/video.js/8.5.2/video.min.js",
+    "https://jimmywarting.github.io/StreamSaver.js/examples/zip-stream.js"
+  ];
+  scripts.forEach((p) => {
+    const script = document.createElement("script");
+    script.setAttribute("type", "text/javascript");
+    script.src = p;
+    document.documentElement.appendChild(script);
+  });
   createMaskDOM();
-  const script = document.createElement("script");
-  script.setAttribute("type", "text/javascript");
-  script.src = "https://cdn.jsdelivr.net/npm/web-streams-polyfill@3.2.1/dist/ponyfill.min.js";
-  document.documentElement.appendChild(script);
   const link = document.createElement("link");
   link.href = "https://vjs.zencdn.net/8.5.2/video-js.css";
   link.rel = "stylesheet";
@@ -845,4 +853,4 @@
     return { videoList, storyList };
   };
 
-})(streamSaver, CryptoJS, videojs);
+})();
