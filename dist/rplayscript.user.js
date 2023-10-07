@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.3.3
+// @version      1.3.4
 // @author       bambooGHT
-// @description  现在手机也能正常使用了
+// @description  修复了不能播放跟没有ui的bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
@@ -88,7 +88,7 @@
       alert("需要登陆才行,登录后刷新页面");
       return {};
     }
-    const { userInfo: { oid, token } } = data2;
+    const { userInfo: { oid }, token } = data2;
     return { oid, token };
   })();
   const videoData = { m3u8Data: "", downloadIndex: 0, title: "", urls: [] };
@@ -99,9 +99,23 @@
     videoData.urls = urls;
     videoData.downloadIndex = urls.length - 1;
   };
-  const videojs = window.videojs;
-  const CryptoJS = window.CryptoJS;
-  const streamsaver = window.streamSaver;
+  let videoJs = void 0;
+  let CryptoJS = void 0;
+  let streamsaver = void 0;
+  const initPackage = () => {
+    return new Promise((res) => {
+      if (!window.videojs) {
+        setTimeout(() => {
+          res(initPackage());
+        }, 250);
+        return;
+      }
+      videoJs = window.videojs;
+      CryptoJS = window.CryptoJS;
+      streamsaver = window.streamSaver;
+      res(true);
+    });
+  };
   const decrypt = (m3u8Data2, key) => {
     const { lib, mode, pad, AES } = CryptoJS;
     const encryptedData = new Uint8Array(m3u8Data2);
@@ -143,7 +157,7 @@
     const updateProgress = progress(0);
     let currentDir = { dir: void 0, name: "" };
     for (const item of value) {
-      const { id, name, isCreatorhome } = item;
+      const { id, name } = item;
       if (name) {
         if (name !== currentDir.name) {
           currentDir.dir = await getSaveDir(dir, name);
@@ -236,7 +250,7 @@
     const video = createVideo(element);
     const blob = new Blob([m3u8Data2], { type: "application/x-mpegURL" });
     const url = URL.createObjectURL(blob);
-    const player = videojs(video, {
+    const player = videoJs(video, {
       controlBar: {
         pictureInPictureToggle: true
       },
@@ -363,7 +377,7 @@
     }));
   };
   const createProgressDOM$1 = async () => {
-    const divBox = createDivBox();
+    const divBox = createDivBox("0.55rem 0 0 0");
     const DOM = await addDOM$1([divBox]);
     if (!DOM)
       return;
@@ -688,6 +702,7 @@
     script.src = p;
     document.documentElement.appendChild(script);
   });
+  initPackage();
   createMaskDOM();
   const link = document.createElement("link");
   link.href = "https://vjs.zencdn.net/8.5.2/video-js.css";

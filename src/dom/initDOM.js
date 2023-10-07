@@ -47,7 +47,7 @@ export const initDOM = async () => {
 };
 
 const createProgressDOM = async () => {
-  const divBox = createDivBox();
+  const divBox = createDivBox("0.55rem 0 0 0");
   const DOM = await addDOM([divBox]);
   if (!DOM) return;
   const remove = (time = 5500) => {

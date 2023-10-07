@@ -1,4 +1,4 @@
-import { videojs } from "../package";
+import { videoJs } from "../package";
 /**
  * @param {string} m3u8Data 
  * @param {HTMLDivElement} element 
@@ -7,7 +7,7 @@ export const initVideo = (m3u8Data, element) => {
   const video = createVideo(element);
   const blob = new Blob([m3u8Data], { type: "application/x-mpegURL" });
   const url = URL.createObjectURL(blob);
-  const player = videojs(video, {
+  const player = videoJs(video, {
     controlBar: {
       pictureInPictureToggle: true,
     },

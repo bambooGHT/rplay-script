@@ -26,7 +26,7 @@ export const download1 = async (value, title, progress) => {
   const updateProgress = progress(0);
   let currentDir = { dir: undefined, name: "" };
   for (const item of value) {
-    const { id, name, isCreatorhome } = item;
+    const { id, name } = item;
     if (name) {
       if (name !== currentDir.name) {
         currentDir.dir = await getSaveDir(dir, name);
@@ -36,7 +36,7 @@ export const download1 = async (value, title, progress) => {
       currentDir.dir = dir;
     }
 
-    const { title, url } = await getContentData(id, isCreatorhome);
+    const { title, url } = await getContentData(id);
     updateProgress.updateIndex();
     const is = await save(currentDir.dir, url, title);
     if (is) updateProgress.skip();

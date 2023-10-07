@@ -1,6 +1,7 @@
 import { userData, updateVideoData } from "./data";
 import { createMaskDOM, initDOM, initUserPageDOM, updateNormalPosts } from "./dom";
 import { formatTitle } from "./get";
+import { initPackage } from "./package";
 
 const scripts = [
   "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js",
@@ -14,6 +15,8 @@ scripts.forEach((p) => {
   script.src = p;
   document.documentElement.appendChild(script);
 });
+
+initPackage();
 createMaskDOM();
 
 const link = document.createElement("link");

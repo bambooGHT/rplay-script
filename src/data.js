@@ -7,7 +7,7 @@ export const userData = (() => {
     alert("需要登陆才行,登录后刷新页面");
     return {};
   }
-  const { userInfo: { oid, token } } = data;
+  const { userInfo: { oid }, token } = data;
   return { oid, token };
 })();
 
