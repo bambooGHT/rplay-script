@@ -80,7 +80,7 @@
   const formatTitle = (title, modified) => {
     if (modified)
       modified = `[${modified.slice(0, 10)}]`;
-    return `${modified} ${title.replaceAll(":", ".")}.ts`.replace(/[<>/\\? \*]/g, "");
+    return `${modified} ${title.replaceAll(":", ".")}.ts`.replace(/[/\\:?"<>|\*]/g, "");
   };
   const userData = (() => {
     const { AccountModule: data2 } = JSON.parse(localStorage.getItem("vuex") || `{}`);

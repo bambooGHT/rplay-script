@@ -87,5 +87,5 @@ export const getm3u8data = async (s3Key) => {
 
 export const formatTitle = (title, modified) => {
   if (modified) modified = `[${modified.slice(0, 10)}]`;
-  return `${modified} ${title.replaceAll(":", ".")}.ts`.replace(/[<>/\\? \*]/g, "");
+  return `${modified} ${title.replaceAll(":", ".")}.ts`.replace(/[/\\:?"<>|\*]/g, "");
 };
