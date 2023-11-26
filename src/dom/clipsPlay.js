@@ -8,8 +8,8 @@ export const clipPlay = async (contentId) => {
   if (!videoPlay.videoBox) return;
 
   videoPlay.open();
-  const { m3u8Data } = await getContentData(contentId);
-  initVideo(m3u8Data, videoPlay.videoBox);
+  const { url } = await getContentData(contentId);
+  initVideo(url, videoPlay.videoBox);
 };
 
 export const createMaskDOM = () => {

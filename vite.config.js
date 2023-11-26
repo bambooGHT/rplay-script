@@ -9,7 +9,7 @@ export default defineConfig({
       userscript: {
         name: "rplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.3.4",
+        version: "1.3.41",
         description: "修复了不能播放跟没有ui的bug ",
         author: "bambooGHT",
         match: [

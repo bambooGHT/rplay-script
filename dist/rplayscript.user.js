@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.3.4
+// @version      1.3.41
 // @author       bambooGHT
 // @description  修复了不能播放跟没有ui的bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
@@ -22,9 +22,9 @@
     urlList[urlList.length - 1] = urlListLast.replace("#EXT-X-ENDLIST", "");
     return { urlList, key };
   };
-  const getResolutionUrls = (m3u8Data2) => {
-    const urlArray = m3u8Data2.split("\n").filter((s) => s.includes("http")).slice(1);
-    const RESOLUTIONS = m3u8Data2.split("\n").filter((s) => s.includes("RESOLUTION"));
+  const getResolutionUrls = (m3u8Data) => {
+    const urlArray = m3u8Data.split("\n").filter((s) => s.includes("http")).slice(1);
+    const RESOLUTIONS = m3u8Data.split("\n").filter((s) => s.includes("RESOLUTION"));
     return RESOLUTIONS.reduce((result, p, index) => {
       const [resolution] = p.match(new RegExp("(?<=RESOLUTION=).*?(?=,)"));
       result.push({
@@ -34,8 +34,8 @@
       return result;
     }, []);
   };
-  const getKey = async (m3u8Data2) => {
-    const [url] = m3u8Data2.match(new RegExp('(?<=URI=")[^"]+(?=")'));
+  const getKey = async (m3u8Data) => {
+    const [url] = m3u8Data.match(new RegExp('(?<=URI=")[^"]+(?=")'));
     return await (await fetch(url, {
       headers: {
         Age: String(Date.now()).slice(-4)
@@ -65,17 +65,17 @@
     const { title, subtitles, modified, streamables } = data2;
     const title1 = Object.values(subtitles || {});
     const { s3key } = streamables[0];
-    const { m3u8Data: m3u8Data2, urls } = await getm3u8data(s3key);
+    const { m3u8Data, urls } = await getm3u8data(s3key);
     return {
       title: formatTitle(title1[title1.length - 1] || title, modified),
       url: urls[urls.length - 1].url,
-      m3u8Data: m3u8Data2
+      m3u8Data
     };
   };
   const getm3u8data = async (s3Key) => {
-    const m3u8Data2 = await (await fetch(getM3u8Url(s3Key))).text();
-    const urls = getResolutionUrls(m3u8Data2);
-    return { m3u8Data: m3u8Data2, urls };
+    const m3u8Data = await (await fetch(getM3u8Url(s3Key))).text();
+    const urls = getResolutionUrls(m3u8Data);
+    return { m3u8Data, urls };
   };
   const formatTitle = (title, modified) => {
     if (modified)
@@ -93,9 +93,9 @@
   })();
   const videoData = { m3u8Data: "", downloadIndex: 0, title: "", urls: [] };
   const updateVideoData = async (title, s3Key) => {
-    const { m3u8Data: m3u8Data2, urls } = await getm3u8data(s3Key);
+    const { m3u8Data, urls } = await getm3u8data(s3Key);
     videoData.title = title;
-    videoData.m3u8Data = m3u8Data2;
+    videoData.m3u8Data = m3u8Data;
     videoData.urls = urls;
     videoData.downloadIndex = urls.length - 1;
   };
@@ -116,9 +116,9 @@
       res(true);
     });
   };
-  const decrypt = (m3u8Data2, key) => {
+  const decrypt = (m3u8Data, key) => {
     const { lib, mode, pad, AES } = CryptoJS;
-    const encryptedData = new Uint8Array(m3u8Data2);
+    const encryptedData = new Uint8Array(m3u8Data);
     const ciphertext = lib.WordArray.create(encryptedData);
     const Key = lib.WordArray.create(key);
     const ops = {
@@ -211,9 +211,9 @@
   const download = async (url, progress) => {
     const { urlList, key } = await getDownloadUrlListAndKey(url);
     const updateProgress = progress(urlList.length);
-    const downAndDecryptFun = async (URL2, retryCount = 0) => {
+    const downAndDecryptFun = async (URL, retryCount = 0) => {
       try {
-        const uint8Array = decrypt(await (await fetch(URL2)).arrayBuffer(), key);
+        const uint8Array = decrypt(await (await fetch(URL)).arrayBuffer(), key);
         updateProgress.updateProgress(uint8Array.byteLength);
         return uint8Array;
       } catch (error) {
@@ -222,8 +222,8 @@
           alert("下载失败");
           throw Error("下载失败");
         }
-        console.log(`下载失败 正在重试. url:${URL2}`);
-        return downAndDecryptFun(URL2, retryCount + 1);
+        console.log(`下载失败 正在重试. url:${URL}`);
+        return downAndDecryptFun(URL, retryCount + 1);
       }
     };
     const stream = new ReadableStream({
@@ -234,7 +234,7 @@
           return;
         }
         const url2 = urlList.splice(0, 6);
-        let datas = await Promise.all(url2.map((URL2) => downAndDecryptFun(URL2)));
+        let datas = await Promise.all(url2.map((URL) => downAndDecryptFun(URL)));
         datas.forEach((value) => controller.enqueue(value));
         datas = null;
         await this.pull(controller);
@@ -246,10 +246,8 @@
     const saveDir = await dir.getDirectoryHandle(name, { create: true });
     return saveDir;
   };
-  const initVideo = (m3u8Data2, element) => {
+  const initVideo = (m3u8Data, element) => {
     const video = createVideo(element);
-    const blob = new Blob([m3u8Data2], { type: "application/x-mpegURL" });
-    const url = URL.createObjectURL(blob);
     const player = videoJs(video, {
       controlBar: {
         pictureInPictureToggle: true
@@ -262,7 +260,7 @@
       preload: "auto",
       playbackRates: [0.5, 1, 1.5, 2, 2.5, 3],
       sources: [{
-        src: url,
+        src: m3u8Data,
         type: "application/x-mpegURL"
       }],
       experimentalSvgIcons: true,
@@ -270,7 +268,7 @@
       bigPlayButton: true,
       pip: true,
       enableDocumentPictureInPicture: false
-    }, () => URL.revokeObjectURL(url));
+    });
     return player;
   };
   const createVideo = (element) => {
@@ -343,13 +341,13 @@
     if (!await addDOM$1([div, div1]))
       return;
     let isDown = false;
-    const { title, downloadIndex, urls, m3u8Data: m3u8Data2 } = videoData;
+    const { title, downloadIndex, urls } = videoData;
     div.appendChild(createSelectDOM(videoData.urls, downloadIndex, (e) => {
       videoData.downloadIndex = +e.target.value;
     }));
     div.appendChild(createDOM("播放", () => {
       const VIDEODOM = document.querySelector("#play-view").children[0].children[0].children[0];
-      initVideo(m3u8Data2, VIDEODOM);
+      initVideo(urls[videoData.downloadIndex].url, VIDEODOM);
     }));
     const down = async (index) => {
       if (isDown) {
@@ -359,10 +357,11 @@
       isDown = true;
       const { fun, remove } = await createProgressDOM$1();
       try {
+        const URL = urls[videoData.downloadIndex].url;
         if (index === 1) {
-          await download1(urls[videoData.downloadIndex].url, title, fun);
+          await download1(URL, title, fun);
         } else {
-          await download2(urls[videoData.downloadIndex].url, title, fun);
+          await download2(URL, title, fun);
         }
         isDown = false;
       } catch (error) {
@@ -387,7 +386,6 @@
       }, time);
     };
     divBox.appendChild(createDOM(``, () => {
-      initVideo(m3u8Data);
     }));
     const div = divBox.children[0];
     return {
@@ -445,8 +443,8 @@
     if (!videoPlay.videoBox)
       return;
     videoPlay.open();
-    const { m3u8Data: m3u8Data2 } = await getContentData(contentId);
-    initVideo(m3u8Data2, videoPlay.videoBox);
+    const { url } = await getContentData(contentId);
+    initVideo(url, videoPlay.videoBox);
   };
   const createMaskDOM = () => {
     const mask = document.createElement("div");

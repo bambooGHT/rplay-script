@@ -5,8 +5,8 @@ import { videoJs } from "../package";
  */
 export const initVideo = (m3u8Data, element) => {
   const video = createVideo(element);
-  const blob = new Blob([m3u8Data], { type: "application/x-mpegURL" });
-  const url = URL.createObjectURL(blob);
+  // const blob = new Blob([m3u8Data], { type: "application/x-mpegURL" });
+  // const url = URL.createObjectURL(blob);
   const player = videoJs(video, {
     controlBar: {
       pictureInPictureToggle: true,
@@ -19,7 +19,7 @@ export const initVideo = (m3u8Data, element) => {
     preload: "auto",
     playbackRates: [0.5, 1, 1.5, 2, 2.5, 3],
     sources: [{
-      src: url,
+      src: m3u8Data,
       type: "application/x-mpegURL"
     }],
     experimentalSvgIcons: true,
@@ -27,7 +27,8 @@ export const initVideo = (m3u8Data, element) => {
     bigPlayButton: true,
     pip: true,
     enableDocumentPictureInPicture: false
-  }, () => URL.revokeObjectURL(url));
+  });
+  // }, () => URL.revokeObjectURL(url));
 
   return player;
 };

@@ -10,13 +10,13 @@ export const initDOM = async () => {
   if (!await addDOM([div, div1])) return;
 
   let isDown = false;
-  const { title, downloadIndex, urls, m3u8Data } = videoData;
+  const { title, downloadIndex, urls } = videoData;
   div.appendChild(createSelectDOM(videoData.urls, downloadIndex, (e) => {
     videoData.downloadIndex = +e.target.value;
   }));
   div.appendChild(createDOM("播放", () => {
     const VIDEODOM = document.querySelector("#play-view").children[0].children[0].children[0];
-    initVideo(m3u8Data, VIDEODOM);
+    initVideo(urls[videoData.downloadIndex].url, VIDEODOM);
   }));
 
   const down = async (index) => {
@@ -27,10 +27,11 @@ export const initDOM = async () => {
     isDown = true;
     const { fun, remove } = await createProgressDOM();
     try {
+      const URL = urls[videoData.downloadIndex].url;
       if (index === 1) {
-        await download1(urls[videoData.downloadIndex].url, title, fun);
+        await download1(URL, title, fun);
       } else {
-        await download2(urls[videoData.downloadIndex].url, title, fun);
+        await download2(URL, title, fun);
       }
       isDown = false;
     } catch (error) {
@@ -56,9 +57,7 @@ const createProgressDOM = async () => {
     }, time);
   };
 
-  divBox.appendChild(createDOM(``, () => {
-    initVideo(m3u8Data);
-  }));
+  divBox.appendChild(createDOM(``, () => { }));
 
   const div = divBox.children[0];
 
