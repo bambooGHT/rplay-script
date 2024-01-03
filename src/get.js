@@ -17,6 +17,9 @@ export const getDownloadUrlListAndKey = async (url) => {
 export const getResolutionUrls = (m3u8Data) => {
   const urlArray = m3u8Data.split("\n").filter(s => s.includes("http")).slice(1);
   const RESOLUTIONS = m3u8Data.split("\n").filter(s => s.includes("RESOLUTION"));
+  if (!RESOLUTIONS.length) {
+    return urlArray.map((p, index) => ({ resolution: `${index}x${index + 1}`, url: p }));
+  }
   return RESOLUTIONS.reduce((result, p, index) => {
     const [resolution] = p.match(/(?<=RESOLUTION=).*?(?=,)/);
     result.push({

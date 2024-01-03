@@ -9,8 +9,8 @@ export default defineConfig({
       userscript: {
         name: "rplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.3.41",
-        description: "修复了不能播放跟没有ui的bug ",
+        version: "1.3.5",
+        description: "修复了mp3(单一画面的视频)不能播放的bug ",
         author: "bambooGHT",
         match: [
           "https://rplay.live/*"

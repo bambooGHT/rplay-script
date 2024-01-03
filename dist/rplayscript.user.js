@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.3.41
+// @version      1.3.5
 // @author       bambooGHT
-// @description  修复了不能播放跟没有ui的bug
+// @description  修复了mp3(单一画面的视频)不能播放的bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
@@ -25,6 +25,9 @@
   const getResolutionUrls = (m3u8Data) => {
     const urlArray = m3u8Data.split("\n").filter((s) => s.includes("http")).slice(1);
     const RESOLUTIONS = m3u8Data.split("\n").filter((s) => s.includes("RESOLUTION"));
+    if (!RESOLUTIONS.length) {
+      return urlArray.map((p, index) => ({ resolution: `${index}x${index + 1}`, url: p }));
+    }
     return RESOLUTIONS.reduce((result, p, index) => {
       const [resolution] = p.match(new RegExp("(?<=RESOLUTION=).*?(?=,)"));
       result.push({
