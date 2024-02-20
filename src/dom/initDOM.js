@@ -5,7 +5,7 @@ import { initVideo } from "./play";
 import { createDOM, createDivBox, createSelectDOM } from "./createDOM";
 
 export const initDOM = async () => {
-  const div = createDivBox("0.55rem 0 0 5px");
+  const div = createDivBox("0 0 0 5px");
   const div1 = createDivBox("0 0 0 5px");
   if (!await addDOM([div, div1])) return;
 
@@ -95,8 +95,8 @@ const addDOM = (doms, index = 0) => {
       return;
     }
     ++index;
-    const infoDOM = document.querySelector(".text-lg")?.parentElement?.parentElement;
-
+    let infoDOM = document.querySelector(".w-player")?.children[1];
+    if (!infoDOM) infoDOM = document.querySelector("#play-view > div.inline-block.min-h-screen.w-full.align-top > div:nth-child(1)")?.children[1];
     if (infoDOM?.nodeName === "DIV") {
       if (!document.URL.includes("play/")) return;
       const firstDOM = infoDOM.firstChild;
@@ -109,6 +109,6 @@ const addDOM = (doms, index = 0) => {
 
     setTimeout(() => {
       res(addDOM(doms, index));
-    }, 250);
+    }, 300);
   });
 };

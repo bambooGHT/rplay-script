@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         rplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.3.5
+// @version      1.3.51
 // @author       bambooGHT
-// @description  修复了mp3(单一画面的视频)不能播放的bug
+// @description  网站的dom样式类名改了导致添加不了,修一下,修复了mp3(单一画面的视频)不能播放的bug
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/main/dist/rplayscript.user.js
@@ -339,7 +339,7 @@
     return input;
   };
   const initDOM = async () => {
-    const div = createDivBox("0.55rem 0 0 5px");
+    const div = createDivBox("0 0 0 5px");
     const div1 = createDivBox("0 0 0 5px");
     if (!await addDOM$1([div, div1]))
       return;
@@ -425,7 +425,9 @@
         return;
       }
       ++index;
-      const infoDOM = (_b = (_a = document.querySelector(".text-lg")) == null ? void 0 : _a.parentElement) == null ? void 0 : _b.parentElement;
+      let infoDOM = (_a = document.querySelector(".w-player")) == null ? void 0 : _a.children[1];
+      if (!infoDOM)
+        infoDOM = (_b = document.querySelector("#play-view > div.inline-block.min-h-screen.w-full.align-top > div:nth-child(1)")) == null ? void 0 : _b.children[1];
       if ((infoDOM == null ? void 0 : infoDOM.nodeName) === "DIV") {
         if (!document.URL.includes("play/"))
           return;
@@ -438,7 +440,7 @@
       }
       setTimeout(() => {
         res(addDOM$1(doms, index));
-      }, 250);
+      }, 300);
     });
   };
   let videoPlay = {};
