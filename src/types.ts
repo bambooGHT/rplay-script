@@ -9,8 +9,10 @@ export interface IContent {
   publishedAt: string;
   /** 用户名 */
   nickname: string;
+  /** 语言  */
+  bucketRegion: "ap-northeast-1" | "ap-northeast-2";
   /** url */
-  streamables: [{ lang: string, s3key: string; }];
+  streamables: [{ s3key: string; }];
 }
 
 export type PublishedContentSet = Record<string, IContent>;

@@ -26,9 +26,9 @@ const addElement = async (content: IContent) => {
     domBox.appendChild(downProgressEl);
     clearTimeout(timer);
 
-    const { title, modified, streamables, _id, nickname } = content;
-    const { lang, s3key } = streamables[0];
-    const videoInfo = { title: formatVideoFilename(title, modified), id: _id, lang, s3key } satisfies IVideoInfo;
+    const { title, modified, streamables, _id, nickname, bucketRegion } = content;
+    const { s3key } = streamables[0];
+    const videoInfo = { title: formatVideoFilename(title, modified), id: _id, lang: bucketRegion === "ap-northeast-1" ? "jp" : "kr", s3key } satisfies IVideoInfo;
 
     let chunkLength = 0;
     let totalSize = 0;

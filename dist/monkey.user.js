@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         newRplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.0.0
+// @version      1.0.1
 // @author       bambooGHT
 // @description  太久没写了,旧的已经看不懂了(
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
+// @downloadURL  https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
+// @updateURL    https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
 // @match        https://rplay.live/*
 // @grant        none
 // ==/UserScript==
@@ -347,7 +349,8 @@
         return {
           title: formatVideoFilename(content.title, content.publishedAt || content.modified),
           id: content._id,
-          ...streamInfo
+          lang: content.bucketRegion === "ap-northeast-1" ? "jp" : "kr",
+          s3key: streamInfo.s3key
         };
       });
       let chunkLength = 0;
@@ -450,9 +453,9 @@
       const downProgressEl = downloadProgressEl ?? createDownloadProgressEl("下载中. 0 / 0 (0)");
       domBox.appendChild(downProgressEl);
       clearTimeout(timer);
-      const { title, modified, streamables, _id, nickname } = content;
-      const { lang, s3key } = streamables[0];
-      const videoInfo = { title: formatVideoFilename(title, modified), id: _id, lang, s3key };
+      const { title, modified, streamables, _id, nickname, bucketRegion } = content;
+      const { s3key } = streamables[0];
+      const videoInfo = { title: formatVideoFilename(title, modified), id: _id, lang: bucketRegion === "ap-northeast-1" ? "jp" : "kr", s3key };
       let chunkLength = 0;
       let totalSize = 0;
       let downloadIndex = 0;

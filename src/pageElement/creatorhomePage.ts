@@ -96,7 +96,8 @@ const addElement = async (creator: ICreator) => {
       return {
         title: formatVideoFilename(content.title, content.publishedAt || content.modified),
         id: content._id,
-        ...streamInfo
+        lang: content.bucketRegion === "ap-northeast-1" ? "jp" : "kr",
+        s3key: streamInfo.s3key
       };
     });
 
