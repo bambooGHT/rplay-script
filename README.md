@@ -1,5 +1,5 @@
 # Rplay Script
-### [Install URL](null)
+### [Install URL](https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js)
 
 Download Script for Rplay
 
