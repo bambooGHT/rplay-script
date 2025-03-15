@@ -8,7 +8,7 @@ export default defineConfig({
       userscript: {
         name: "newRplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.0.1",
+        version: "1.0.2",
         description: "太久没写了,旧的已经看不懂了(",
         author: "bambooGHT",
         match: [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         newRplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.0.1
+// @version      1.0.2
 // @author       bambooGHT
 // @description  太久没写了,旧的已经看不懂了(
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
@@ -79,7 +79,7 @@
     const saveVideo = async (dirName, videoInfo, m3u8Data) => {
       var _a2;
       const dir = await getSaveDir(dirHandle, dirName);
-      if (await isExists(dir, video.dirName)) {
+      if (await isExists(dir, videoInfo.title)) {
         (_a2 = onDownload == null ? void 0 : onDownload.onComplete) == null ? void 0 : _a2.call(onDownload);
         return;
       }

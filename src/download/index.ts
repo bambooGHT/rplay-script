@@ -28,7 +28,7 @@ export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
 
   const saveVideo = async (dirName: string, videoInfo: IVideoInfo, m3u8Data: IM3u8Data) => {
     const dir = await getSaveDir(dirHandle, dirName);
-    if (await isExists(dir, video.dirName)) {
+    if (await isExists(dir, videoInfo.title)) {
       onDownload?.onComplete?.();
       return;
     }
