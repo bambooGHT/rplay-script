@@ -1,6 +1,7 @@
-import { listenReq } from "./listenReq";
+import { listenReq, listenReqAtFetch } from "./listenReq";
 import { creatorhomePage } from "./pageElement/creatorhomePage";
 import { playPage } from "./pageElement/playPage";
+import { purchasePage } from "./pageElement/purchasePage";
 
 const initScript = () => {
   const scriptList = [
@@ -55,4 +56,7 @@ listenReq([
     },
     callback: creatorhomePage
   },
+]);
+listenReqAtFetch([
+  { value: "bulk?requestFormQueue", callback: purchasePage }
 ]);

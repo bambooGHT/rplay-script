@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         newRplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.0.2
+// @version      1.1.0
 // @author       bambooGHT
-// @description  太久没写了,旧的已经看不懂了(
+// @description  现在可以从已购买列表选项卡批量下载视频
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
@@ -34,6 +34,67 @@
       }
       originalSend.apply(this, arguments);
     };
+  };
+  const originalFetch = window.fetch;
+  const listenReqAtFetch = (conditions) => {
+    window.fetch = async function(...args) {
+      const response = await originalFetch.apply(this, args);
+      const url = typeof args[0] === "string" ? args[0] : args[0].href;
+      for (const item of conditions) {
+        const is = typeof item.value === "string" ? url.includes(item.value) : item.value(url);
+        if (is) response.clone().json().then(item.callback);
+      }
+      return response;
+    };
+  };
+  const createDomBox = () => {
+    const domBox = document.createElement("div");
+    domBox.style.width = "100%";
+    domBox.style.paddingTop = "5px";
+    return domBox;
+  };
+  const createButtonEl = (title) => {
+    const tempEl = `
+  <div class="plax-button cursor-pointer select-none px-4 py-2 hover:opacity-75 mr-2 h-8 whitespace-nowrap px-4 text-md  bg-plaxgray-170 text-plaxgray-90" data-v-55e34760="" style="border-radius: 6px;">
+     ${title}
+  </div>
+  `;
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = tempEl;
+    const DOM = tempDiv.children[0];
+    DOM.style.userSelect = "none";
+    DOM.style.width = "min-content";
+    DOM.style.margin = "5px 6px 5px 0";
+    return DOM;
+  };
+  const createEl = (value) => {
+    const dom = createButtonEl(value);
+    dom.classList.remove("cursor-pointer");
+    dom.classList.remove("hover:opacity-75");
+    return dom;
+  };
+  const createDownloadProgressEl = (value) => {
+    const dom = createEl(value);
+    dom.id = "downloadProgress";
+    return dom;
+  };
+  const createCheckbox = () => {
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.classList.add("checkbox-input");
+    return checkbox;
+  };
+  const createDownloadElement = () => {
+    const domBox = createDomBox();
+    const domRow1 = document.createElement("div");
+    const downButton = createButtonEl("筛选下载");
+    const selectAllButton = createButtonEl("全选(反选)");
+    const filterEl = createEl("0 / 0");
+    domBox.style.paddingBottom = "5px";
+    domRow1.style.display = "flex";
+    domRow1.append(downButton, selectAllButton, filterEl);
+    domBox.appendChild(domRow1);
+    return { domBox, downButton, selectAllButton, filterEl };
   };
   const decrypt = (m3u8Data, key) => {
     const { lib, mode, pad, AES } = CryptoJS;
@@ -97,6 +158,7 @@
         const m3u8Data = await getM3u8Data(videoInfo.id, videoInfo.lang, videoInfo.s3key);
         await saveVideo(video.dirName, videoInfo, m3u8Data);
       } catch (error) {
+        console.error(error);
         (_b = onDownload == null ? void 0 : onDownload.onError) == null ? void 0 : _b.call(onDownload, {
           id: videoInfo.id,
           message: "NOT_PURCHASED"
@@ -237,83 +299,58 @@
     }
     return `${(size / Math.pow(bye, i)).toFixed(2)}${aMultiples[i]}`;
   };
-  const createDomBox = () => {
-    const domBox = document.createElement("div");
-    domBox.style.width = "100%";
-    domBox.style.paddingTop = "5px";
-    return domBox;
+  const insertElement$1 = (dom, key) => {
+    return new Promise((resolve) => {
+      let el = document.querySelector(key);
+      if (!(el == null ? void 0 : el.parentElement)) {
+        let observer = new MutationObserver(() => {
+          el = document.querySelector(key);
+          if (el == null ? void 0 : el.parentElement) {
+            el.parentElement.insertBefore(dom, el.nextElementSibling);
+            observer.disconnect();
+            observer = null;
+            resolve(el);
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        return;
+      }
+      el.parentElement.insertBefore(dom, el.nextElementSibling);
+      resolve(el);
+    });
   };
-  const createButtonEl = (title) => {
-    const tempEl = `
-  <div class="plax-button cursor-pointer select-none px-4 py-2 hover:opacity-75 mr-2 h-8 whitespace-nowrap px-4 text-md  bg-plaxgray-170 text-plaxgray-90" data-v-55e34760="" style="border-radius: 6px;">
-     ${title}
-  </div>
-  `;
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = tempEl;
-    const DOM = tempDiv.children[0];
-    DOM.style.userSelect = "none";
-    DOM.style.width = "min-content";
-    DOM.style.margin = "5px 6px 5px 0";
-    return DOM;
-  };
-  const createEl = (value) => {
-    const dom = createButtonEl(value);
-    dom.classList.remove("cursor-pointer");
-    dom.classList.remove("hover:opacity-75");
-    return dom;
-  };
-  const createDownloadProgressEl = (value) => {
-    const dom = createEl(value);
-    dom.id = "downloadProgress";
-    return dom;
-  };
-  const createCheckbox = () => {
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.classList.add("checkbox-input");
-    return checkbox;
-  };
-  const creatorhomePage = (creator) => {
-    if (!document.URL.includes("creatorhome") || document.querySelector("#creatorhomePage")) return;
-    addElement$1(creator);
-  };
-  const addElement$1 = async (creator) => {
-    const domBox = createDomBox();
-    const domRow1 = document.createElement("div");
-    const downButton = createButtonEl("筛选下载");
-    const selectAllButton = createButtonEl("全选(反选)");
-    const filterEl = createEl("0 / 0");
-    domBox.style.paddingBottom = "5px";
-    domBox.id = "creatorhomePage";
-    domRow1.style.display = "flex";
-    domRow1.append(downButton, selectAllButton, filterEl);
-    domBox.appendChild(domRow1);
-    await insertElement$1(domBox);
-    const listBox = document.querySelector(".md\\:justify-center").parentElement.lastElementChild;
-    const videoIdList = /* @__PURE__ */ new Set();
-    let currentPageVideoList = [];
+  const initListDownloadData = ({
+    domBox,
+    filterEl,
+    listBox,
+    selectAllButton,
+    downButton,
+    videoDataList,
+    currentVideoIdList
+  }) => {
+    const listData = {
+      currentVideoIdList,
+      videoIdList: /* @__PURE__ */ new Set()
+    };
     const uodateFilterCount = (count) => {
-      filterEl.innerText = `${count} / ${currentPageVideoList.length}`;
+      filterEl.innerText = `${count} / ${listData.currentVideoIdList.length}`;
     };
-    const reset = () => {
-      currentPageVideoList = document.URL.split("=")[1] === "contents" ? creator.published : creator.publishedReplays;
+    let observer;
+    const observerVideoAdd = () => {
+      if (observer) observer.disconnect();
+      observer = observerVideoList(listBox.querySelector(".grid"), addVideoCheckbox);
+    };
+    const resetData = () => {
       uodateFilterCount(0);
-      videoIdList.clear();
-      initListCheckbox();
-      observerVideoList(listBox.querySelector(".grid"), addVideoCheckbox);
-    };
-    const initListCheckbox = () => {
-      const list = listBox.querySelector(".grid");
-      Array.from(list.children).forEach((el) => {
-        addVideoCheckbox(el);
-      });
+      listData.videoIdList.clear();
+      observerVideoAdd();
     };
     const addVideoCheckbox = (el) => {
       const checkbox = createCheckbox();
-      checkbox.dataset["videoId"] = el.querySelector("a").href.split("play/")[1];
+      checkbox.dataset["videoId"] = el.querySelector("a").href.split("?")[0].split("play/")[1];
       checkbox.onchange = () => {
         const id = checkbox.dataset["videoId"];
+        const { videoIdList } = listData;
         if (checkbox.checked) {
           videoIdList.add(id);
         } else {
@@ -323,87 +360,49 @@
       };
       el.appendChild(checkbox);
     };
-    selectAllButton.onclick = () => {
-      const inputs = listBox.querySelectorAll(".grid div input");
-      const allSelected = !Array.from(inputs).every((input) => input.checked);
-      inputs.forEach((input) => input.checked = allSelected);
-      if (allSelected) {
-        uodateFilterCount(currentPageVideoList.length);
-        currentPageVideoList.forEach((id) => videoIdList.add(id));
-        return;
-      }
-      uodateFilterCount(0);
-      videoIdList.clear();
-    };
-    let timer = 0;
-    downButton.onclick = () => {
-      if (videoIdList.size === 0) return;
-      const downloadProgressEl = domBox.querySelector("#downloadProgress");
-      if (downloadProgressEl && downloadProgressEl.innerText.includes("下载中")) return;
-      const downProgressEl = downloadProgressEl ?? createDownloadProgressEl("下载中. [ 0 / 0 ] 0 / 0 (0)");
-      domBox.appendChild(downProgressEl);
-      clearTimeout(timer);
-      const list = [...videoIdList].map((p) => {
-        const content = creator.metadataSet.publishedContentSet[p];
-        const streamInfo = content.streamables[0];
-        return {
-          title: formatVideoFilename(content.title, content.publishedAt || content.modified),
-          id: content._id,
-          lang: content.bucketRegion === "ap-northeast-1" ? "jp" : "kr",
-          s3key: streamInfo.s3key
-        };
-      });
-      let chunkLength = 0;
-      let totalSize = 0;
-      let downloadIndex = 0;
-      let downloadChunkIndex = 0;
-      let videoDownloadErrorCount = {
-        [VideoDownloadError.DOWNLOAD_FAILED]: 0,
-        [VideoDownloadError.NOT_PURCHASED]: 0,
-        [VideoDownloadError.CANCEL_DOWNLOAD]: 0
-      };
-      const onDownload = {
-        onBeforeDownload: (length) => {
-          chunkLength = length;
-          downProgressEl.innerText = `下载中. [ ${downloadIndex} / ${list.length} ] 0 / ${length} (${formatFileSize(totalSize)})`;
-        },
-        onProgress: (size) => {
-          totalSize += size;
-          downloadChunkIndex += 1;
-          downProgressEl.innerText = `下载中. [ ${downloadIndex} / ${list.length} ] ${downloadChunkIndex} / ${chunkLength} (${formatFileSize(totalSize)})`;
-        },
-        onComplete: () => {
-          downloadIndex += 1;
-          downloadChunkIndex = 0;
-        },
-        onAllComplete() {
-          downProgressEl.innerText = `下载完成. [ ${downloadIndex} / ${list.length} ] (${formatFileSize(totalSize)})`;
-          const downloadErrorInfo1 = createEl(`下载失败数量: ${videoDownloadErrorCount[VideoDownloadError.DOWNLOAD_FAILED]}`);
-          const downloadErrorInfo2 = createEl(`未购买数量: ${videoDownloadErrorCount[VideoDownloadError.NOT_PURCHASED]}`);
-          domBox.append(downloadErrorInfo1, downloadErrorInfo2);
-          timer = setTimeout(() => {
-            [downProgressEl, downloadErrorInfo1, downloadErrorInfo2].forEach((el) => domBox.removeChild(el));
-          }, 8e3);
-        },
-        onError(error) {
-          videoDownloadErrorCount[error.message] += 1;
-          if (error.message === VideoDownloadError.CANCEL_DOWNLOAD) {
-            downProgressEl.innerText = error.message;
-          }
+    const bindElementsClickEvent = () => {
+      selectAllButton.onclick = () => {
+        const { videoIdList, currentVideoIdList: currentVideoIdList2 } = listData;
+        const inputs = listBox.querySelectorAll(".grid div input");
+        const allSelected = !Array.from(inputs).every((input) => input.checked);
+        inputs.forEach((input) => input.checked = allSelected);
+        if (allSelected) {
+          uodateFilterCount(currentVideoIdList2.length);
+          currentVideoIdList2.forEach((id) => videoIdList.add(id));
+          return;
         }
+        resetData();
       };
-      downVideo({ dirName: creator.nickname, videoInfo: list }, onDownload);
+      downButton.onclick = async () => {
+        const { videoIdList } = listData;
+        if (videoIdList.size === 0) return;
+        const list = getDownloadList(listData.videoIdList, videoDataList);
+        const nikiname = Object.values(videoDataList)[0].nickname;
+        downloadVideo(nikiname, list, domBox);
+      };
     };
-    observerPageToggle(listBox, reset);
-    reset();
+    const initListCheckbox = () => {
+      const list = listBox.querySelector(".grid");
+      Array.from(list.children).forEach((el) => {
+        addVideoCheckbox(el);
+      });
+    };
+    resetData();
+    initListCheckbox();
+    bindElementsClickEvent();
+    return { listData, resetData, initListCheckbox };
   };
-  const observerPageToggle = (el, fn) => {
-    const observer = new MutationObserver((mutationList) => {
-      for (const item of mutationList) {
-        if (item.type === "childList" && item.addedNodes.length > 0) fn();
-      }
+  const getDownloadList = (idList, videoDataList) => {
+    return [...idList].map((p) => {
+      const content2 = videoDataList[p];
+      const streamInfo = content2.streamables[0];
+      return {
+        title: formatVideoFilename(content2.title, content2.publishedAt || content2.modified),
+        id: content2._id,
+        lang: content2.bucketRegion === "ap-northeast-1" ? "jp" : "kr",
+        s3key: streamInfo.s3key
+      };
     });
-    observer.observe(el, { childList: true });
   };
   const observerVideoList = (el, fn) => {
     const observer = new MutationObserver((mutationList) => {
@@ -416,43 +415,107 @@
       }
     });
     observer.observe(el, { childList: true });
+    return observer;
   };
-  const insertElement$1 = (dom) => {
-    return new Promise((resolve) => {
-      let el = document.querySelector(".md\\:justify-center");
-      if (!(el == null ? void 0 : el.parentElement)) {
-        let observer = new MutationObserver(() => {
-          el = document.querySelector(".md\\:justify-center");
-          if (el == null ? void 0 : el.parentElement) {
-            el.parentElement.insertBefore(dom, el.nextElementSibling);
-            observer.disconnect();
-            observer = null;
-            resolve();
-          }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-        return;
+  let timer;
+  const downloadVideo = (dirName, list, domBox) => {
+    const downloadProgressEl = domBox.querySelector("#downloadProgress");
+    if (downloadProgressEl && downloadProgressEl.innerText.includes("下载中")) return;
+    const downProgressEl = downloadProgressEl ?? createDownloadProgressEl("下载中. [ 0 / 0 ] 0 / 0 (0)");
+    domBox.appendChild(downProgressEl);
+    clearTimeout(timer);
+    let chunkLength = 0;
+    let totalSize = 0;
+    let downloadIndex = 0;
+    let downloadChunkIndex = 0;
+    let videoDownloadErrorCount = {
+      [VideoDownloadError.DOWNLOAD_FAILED]: 0,
+      [VideoDownloadError.NOT_PURCHASED]: 0,
+      [VideoDownloadError.CANCEL_DOWNLOAD]: 0
+    };
+    const onDownload = {
+      onBeforeDownload: (length) => {
+        chunkLength = length;
+        downProgressEl.innerText = `下载中. [ ${downloadIndex} / ${list.length} ] 0 / ${length} (${formatFileSize(totalSize)})`;
+      },
+      onProgress: (size) => {
+        totalSize += size;
+        downloadChunkIndex += 1;
+        downProgressEl.innerText = `下载中. [ ${downloadIndex} / ${list.length} ] ${downloadChunkIndex} / ${chunkLength} (${formatFileSize(totalSize)})`;
+      },
+      onComplete: () => {
+        downloadIndex += 1;
+        downloadChunkIndex = 0;
+      },
+      onAllComplete() {
+        downProgressEl.innerText = `下载完成. [ ${downloadIndex} / ${list.length} ] (${formatFileSize(totalSize)})`;
+        const downloadErrorInfo1 = createEl(`下载失败数量: ${videoDownloadErrorCount[VideoDownloadError.DOWNLOAD_FAILED]}`);
+        const downloadErrorInfo2 = createEl(`未购买数量: ${videoDownloadErrorCount[VideoDownloadError.NOT_PURCHASED]}`);
+        domBox.append(downloadErrorInfo1, downloadErrorInfo2);
+        timer = setTimeout(() => {
+          [downProgressEl, downloadErrorInfo1, downloadErrorInfo2].forEach((el) => domBox.removeChild(el));
+        }, 8e3);
+      },
+      onError(error) {
+        videoDownloadErrorCount[error.message] += 1;
+        if (error.message === VideoDownloadError.CANCEL_DOWNLOAD) {
+          downProgressEl.innerText = error.message;
+        }
       }
-      el.parentElement.insertBefore(dom, el.nextElementSibling);
-      resolve();
+    };
+    downVideo({ dirName, videoInfo: list }, onDownload);
+  };
+  const creatorhomePage = (creator) => {
+    if (!document.URL.includes("creatorhome") || document.querySelector("#creatorhomePage")) return;
+    addElement$2(creator);
+  };
+  const addElement$2 = async (creator) => {
+    const { domBox, selectAllButton, downButton, filterEl } = createDownloadElement();
+    domBox.id = "creatorhomePage";
+    const dom = await insertElement$1(domBox, ".md\\:justify-center");
+    const listBox = dom.parentElement.lastElementChild;
+    const { listData, resetData, initListCheckbox } = initListDownloadData({
+      videoDataList: creator.metadataSet.publishedContentSet,
+      domBox,
+      filterEl,
+      selectAllButton,
+      listBox,
+      downButton,
+      currentVideoIdList: document.URL.split("=")[1] === "contents" ? creator.published : creator.publishedReplays
     });
+    const reset = () => {
+      listData.currentVideoIdList = document.URL.split("=")[1] === "contents" ? creator.published : creator.publishedReplays;
+      resetData();
+      initListCheckbox();
+    };
+    observerPageToggle(listBox, reset);
   };
-  const playPage = (content) => {
-    if (!content.streamables || !document.URL.includes("play") || document.querySelector("#playPage")) return;
-    addElement(content);
+  const observerPageToggle = (el, fn) => {
+    const observer = new MutationObserver((mutationList) => {
+      for (const item of mutationList) {
+        if (item.type === "childList" && item.addedNodes.length > 0) fn();
+      }
+    });
+    observer.observe(el, { childList: true });
   };
-  const addElement = async (content) => {
+  let content = null;
+  const playPage = (c) => {
+    if (!c.streamables || !document.URL.includes("play")) return;
+    content = c;
+    if (!document.querySelector("#playPage")) addElement$1();
+  };
+  const addElement$1 = async () => {
     const domBox = createDomBox();
     const button = createButtonEl("下载");
     domBox.id = "playPage";
     domBox.appendChild(button);
-    let timer = 0;
+    let timer2 = 0;
     button.onclick = () => {
       const downloadProgressEl = domBox.querySelector("#downloadProgress");
       if (downloadProgressEl && downloadProgressEl.innerText.includes("下载中")) return;
       const downProgressEl = downloadProgressEl ?? createDownloadProgressEl("下载中. 0 / 0 (0)");
       domBox.appendChild(downProgressEl);
-      clearTimeout(timer);
+      clearTimeout(timer2);
       const { title, modified, streamables, _id, nickname, bucketRegion } = content;
       const { s3key } = streamables[0];
       const videoInfo = { title: formatVideoFilename(title, modified), id: _id, lang: bucketRegion === "ap-northeast-1" ? "jp" : "kr", s3key };
@@ -471,7 +534,7 @@
         },
         onAllComplete() {
           downProgressEl.innerText = `下载完成. ${downloadIndex} / ${chunkLength} (${formatFileSize(totalSize)})`;
-          timer = setTimeout(() => {
+          timer2 = setTimeout(() => {
             domBox.removeChild(downProgressEl);
           }, 8e3);
         },
@@ -492,21 +555,40 @@
         e.insertBefore(dom, dom1);
         resolve();
       };
-      let el = (_a = document.querySelectorAll(".aspect-h-9")[1]) == null ? void 0 : _a.parentElement;
+      let el = (_a = document.querySelectorAll(".aspect-h-9")[0]) == null ? void 0 : _a.parentElement;
       if (!el) {
         let observer = new MutationObserver(() => {
           var _a2;
-          el = (_a2 = document.querySelectorAll(".aspect-h-9")[1]) == null ? void 0 : _a2.parentElement;
+          el = (_a2 = document.querySelectorAll(".aspect-h-9")[0]) == null ? void 0 : _a2.parentElement;
           if (el) {
-            insert(el);
             observer.disconnect();
             observer = null;
+            insert(el);
           }
         });
         observer.observe(document.body, { childList: true, subtree: true });
         return;
       }
       insert(el);
+    });
+  };
+  const purchasePage = (contents) => {
+    if (!document.URL.includes("myinfo?tab=purchase") || document.querySelector("#purchasePage")) return;
+    addElement(contents);
+  };
+  const addElement = async (contents) => {
+    const { domBox, filterEl, downButton, selectAllButton } = createDownloadElement();
+    domBox.id = "purchasePage";
+    const dom = await insertElement$1(domBox, '[style*="margin-top: 36px"] > div:nth-of-type(2) > div:nth-of-type(3)');
+    const listBox = dom.parentElement.lastElementChild;
+    initListDownloadData({
+      videoDataList: contents,
+      domBox,
+      filterEl,
+      selectAllButton,
+      listBox,
+      downButton,
+      currentVideoIdList: Object.keys(contents)
     });
   };
   const initScript = () => {
@@ -557,6 +639,9 @@
       },
       callback: creatorhomePage
     }
+  ]);
+  listenReqAtFetch([
+    { value: "bulk?requestFormQueue", callback: purchasePage }
   ]);
 
 })();

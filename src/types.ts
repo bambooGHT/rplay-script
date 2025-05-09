@@ -15,7 +15,7 @@ export interface IContent {
   streamables: [{ s3key: string; }];
 }
 
-export type PublishedContentSet = Record<string, IContent>;
+export type RecordContent = Record<string, IContent>;
 export interface ICreator {
   /** id */
   _id: string;
@@ -27,7 +27,7 @@ export interface ICreator {
   publishedReplays: string[];
   /** 数据 */
   metadataSet: {
-    publishedContentSet: PublishedContentSet;
+    publishedContentSet: RecordContent;
     publishedScenarioSet: any;
     publishedFileContentsSet: any;
   };

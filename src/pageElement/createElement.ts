@@ -40,3 +40,19 @@ export const createCheckbox = () => {
   checkbox.classList.add("checkbox-input");
   return checkbox;
 };
+
+export const createDownloadElement = () => {
+  const domBox = createDomBox();
+  const domRow1 = document.createElement("div");
+
+  const downButton = createButtonEl("筛选下载");
+  const selectAllButton = createButtonEl("全选(反选)");
+  const filterEl = createEl("0 / 0");
+
+  domBox.style.paddingBottom = "5px";
+  domRow1.style.display = "flex";
+  domRow1.append(downButton, selectAllButton, filterEl);
+  domBox.appendChild(domRow1);
+
+  return { domBox, downButton, selectAllButton, filterEl };
+};

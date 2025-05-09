@@ -49,6 +49,7 @@ export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
       const m3u8Data = await getM3u8Data(videoInfo.id, videoInfo.lang, videoInfo.s3key);
       await saveVideo(video.dirName, videoInfo, m3u8Data);
     } catch (error) {
+      console.error(error);
       onDownload?.onError?.({ id: videoInfo.id, message: VideoDownloadError.NOT_PURCHASED });
     }
   }

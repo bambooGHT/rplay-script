@@ -1,16 +1,18 @@
-import { downVideo, VideoDownloadError, type IOnVideoDownload, type IVideoInfo } from "../download";
-import { createButtonEl, createDomBox, createDownloadProgressEl } from "./element";
-import { formatFileSize, formatVideoFilename } from "../tool";
+import { downVideo, type IOnVideoDownload, type IVideoInfo } from "../download";
+import { createButtonEl, createDomBox, createDownloadProgressEl } from "./createElement";
+import { formatFileSize, formatVideoFilename } from "../tools";
 import type { IContent } from "../types";
 
-export const playPage = (content: IContent) => {
-  if (!content.streamables
-    || !document.URL.includes("play")
-    || document.querySelector("#playPage")) return;
-  addElement(content);
+let content: IContent = null!;
+
+export const playPage = (c: IContent) => {
+  if (!c.streamables || !document.URL.includes("play")) return;
+  content = c;
+  
+  if (!document.querySelector("#playPage")) addElement();
 };
 
-const addElement = async (content: IContent) => {
+const addElement = async () => {
   const domBox = createDomBox();
   const button = createButtonEl("下载");
 
@@ -69,14 +71,14 @@ const insertElement = (dom: Element) => {
       resolve();
     };
 
-    let el = document.querySelectorAll(".aspect-h-9")[1]?.parentElement;
+    let el = document.querySelectorAll(".aspect-h-9")[0]?.parentElement;
     if (!el) {
       let observer = new MutationObserver(() => {
-        el = document.querySelectorAll(".aspect-h-9")[1]?.parentElement;
+        el = document.querySelectorAll(".aspect-h-9")[0]?.parentElement;
         if (el) {
-          insert(el);
           observer.disconnect();
           observer = null as any;
+          insert(el);
         }
       });
       observer.observe(document.body, { childList: true, subtree: true });
