@@ -14,13 +14,12 @@ const addElement = async (contents: RecordContent) => {
   domBox.id = "purchasePage";
 
   const dom = await insertElement(domBox, '[style*="margin-top: 36px"] > div:nth-of-type(2) > div:nth-of-type(3)');
-  const listBox = dom.parentElement!.lastElementChild!;
   initListDownloadData({
     videoDataList: contents,
     domBox,
     filterEl,
     selectAllButton,
-    listBox,
+    listBox: dom,
     downButton,
     currentVideoIdList: Object.keys(contents)
   });

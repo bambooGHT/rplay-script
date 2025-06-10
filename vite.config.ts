@@ -8,8 +8,8 @@ export default defineConfig({
       userscript: {
         name: "newRplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.1.0",
-        description: "现在可以从已购买列表选项卡批量下载视频",
+        version: "1.1.10",
+        description: "修复dom",
         author: "bambooGHT",
         match: [
           "https://rplay.live/*"

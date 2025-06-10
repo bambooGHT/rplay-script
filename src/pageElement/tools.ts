@@ -6,11 +6,12 @@ import { createCheckbox, createDownloadProgressEl, createEl } from "./createElem
 export const insertElement = (dom: Element, key: string): Promise<Element> => {
   return new Promise<Element>((resolve) => {
     let el = document.querySelector(key);
+
     if (!el?.parentElement) {
       let observer = new MutationObserver(() => {
         el = document.querySelector(key);
         if (el?.parentElement) {
-          el.parentElement.insertBefore(dom, el.nextElementSibling);
+          el.parentElement.insertBefore(dom, el.nextElementSibling || el);
           observer.disconnect();
           observer = null as any;
           resolve(el);
@@ -20,7 +21,7 @@ export const insertElement = (dom: Element, key: string): Promise<Element> => {
       return;
     }
 
-    el.parentElement.insertBefore(dom, el.nextElementSibling);
+    el.parentElement.insertBefore(dom, el.nextElementSibling || el);
     resolve(el);
   });
 };
@@ -50,6 +51,7 @@ export const initListDownloadData = ({
   };
 
   const addVideoCheckbox = (el: HTMLElement) => {
+    el.classList.add("video-item1");
     const checkbox = createCheckbox();
     checkbox.dataset["videoId"] = el.querySelector("a")!.href.split("?")[0].split("play/")[1];
     checkbox.onchange = () => {

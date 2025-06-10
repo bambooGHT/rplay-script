@@ -19,6 +19,10 @@ const initScript = () => {
 const initCss = () => {
   const style = document.createElement("style");
   style.textContent = `
+  .video-item1 {
+    position: relative;
+  }
+
   .checkbox-input {
     position: absolute;
     width: 20px;
@@ -26,7 +30,7 @@ const initCss = () => {
     top: 0;
     left: 0;
     margin: 7px 7px;
-    z-index: 99999;
+    z-index: 101;
   }
 `;
   document.head.appendChild(style);

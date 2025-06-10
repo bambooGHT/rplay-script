@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         newRplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.1.0
+// @version      1.1.10
 // @author       bambooGHT
-// @description  现在可以从已购买列表选项卡批量下载视频
+// @description  修复dom
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
@@ -306,7 +306,7 @@
         let observer = new MutationObserver(() => {
           el = document.querySelector(key);
           if (el == null ? void 0 : el.parentElement) {
-            el.parentElement.insertBefore(dom, el.nextElementSibling);
+            el.parentElement.insertBefore(dom, el.nextElementSibling || el);
             observer.disconnect();
             observer = null;
             resolve(el);
@@ -315,7 +315,7 @@
         observer.observe(document.body, { childList: true, subtree: true });
         return;
       }
-      el.parentElement.insertBefore(dom, el.nextElementSibling);
+      el.parentElement.insertBefore(dom, el.nextElementSibling || el);
       resolve(el);
     });
   };
@@ -346,6 +346,7 @@
       observerVideoAdd();
     };
     const addVideoCheckbox = (el) => {
+      el.classList.add("video-item1");
       const checkbox = createCheckbox();
       checkbox.dataset["videoId"] = el.querySelector("a").href.split("?")[0].split("play/")[1];
       checkbox.onchange = () => {
@@ -580,13 +581,12 @@
     const { domBox, filterEl, downButton, selectAllButton } = createDownloadElement();
     domBox.id = "purchasePage";
     const dom = await insertElement$1(domBox, '[style*="margin-top: 36px"] > div:nth-of-type(2) > div:nth-of-type(3)');
-    const listBox = dom.parentElement.lastElementChild;
     initListDownloadData({
       videoDataList: contents,
       domBox,
       filterEl,
       selectAllButton,
-      listBox,
+      listBox: dom,
       downButton,
       currentVideoIdList: Object.keys(contents)
     });
@@ -605,6 +605,10 @@
   const initCss = () => {
     const style = document.createElement("style");
     style.textContent = `
+  .video-item1 {
+    position: relative;
+  }
+
   .checkbox-input {
     position: absolute;
     width: 20px;
@@ -612,7 +616,7 @@
     top: 0;
     left: 0;
     margin: 7px 7px;
-    z-index: 99999;
+    z-index: 101;
   }
 `;
     document.head.appendChild(style);
