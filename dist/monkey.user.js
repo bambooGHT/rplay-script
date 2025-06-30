@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         newRplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.1.10
+// @version      1.1.20
 // @author       bambooGHT
-// @description  修复dom
+// @description  现在需要订阅才能播放的视频需要订阅才会有下载按钮,批量下载的场合也要订阅
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
@@ -97,6 +97,7 @@
     return { domBox, downButton, selectAllButton, filterEl };
   };
   const decrypt = (m3u8Data, key) => {
+    if (!key) return new Uint8Array(m3u8Data);
     const { lib, mode, pad, AES } = CryptoJS;
     const encryptedData = new Uint8Array(m3u8Data);
     const ciphertext = lib.WordArray.create(encryptedData);
@@ -155,7 +156,7 @@
     }
     for (const videoInfo of videoInfoList) {
       try {
-        const m3u8Data = await getM3u8Data(videoInfo.id, videoInfo.lang, videoInfo.s3key);
+        const m3u8Data = await getM3u8Data(videoInfo.id, videoInfo.url);
         await saveVideo(video.dirName, videoInfo, m3u8Data);
       } catch (error) {
         console.error(error);
@@ -232,9 +233,8 @@
     const saveDir = await dir.getDirectoryHandle(name, { create: true });
     return saveDir;
   };
-  const getM3u8Data = async (id, lang, s3key) => {
-    const [type, num, hash] = s3key.split("/");
-    const res = await fetch(`https://api.rplay-cdn.com/content/hlsstream?s3key=${lang || "kr"}/${type}/${num}/${hash}/${hash}.m3u8&token=${userData.token}&userOid=${userData.oid}&contentOid=${id}&loginType=plax&abr=true`, {
+  const getM3u8Data = async (id, url) => {
+    const res = await fetch(url, {
       "headers": {
         "accept": "*/*",
         "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-CN;q=0.5",
@@ -253,12 +253,13 @@
       "credentials": "omit"
     });
     const m3u8Data = await res.text();
-    const url = m3u8Data.split("\n").filter((s) => s.includes("http")).pop();
+    const url1 = m3u8Data.split("\n").filter((s) => s.startsWith("http"))[0];
     const key = await getKey(m3u8Data);
-    return { id, url, key };
+    return { id, url: url1, key };
   };
   const getKey = async (m3u8Data) => {
-    const [url] = m3u8Data.match(new RegExp('(?<=URI=")[^"]+(?=")'));
+    const [url] = m3u8Data.match(new RegExp('(?<=URI=")[^"]+(?=")')) ?? [];
+    if (!url) return void 0;
     return (await fetch(url)).arrayBuffer();
   };
   const getvideoChunks = async (url) => {
@@ -396,12 +397,11 @@
   const getDownloadList = (idList, videoDataList) => {
     return [...idList].map((p) => {
       const content2 = videoDataList[p];
-      const streamInfo = content2.streamables[0];
+      const canView = content2.canView;
       return {
         title: formatVideoFilename(content2.title, content2.publishedAt || content2.modified),
         id: content2._id,
-        lang: content2.bucketRegion === "ap-northeast-1" ? "jp" : "kr",
-        s3key: streamInfo.s3key
+        url: canView.url
       };
     });
   };
@@ -501,7 +501,7 @@
   };
   let content = null;
   const playPage = (c) => {
-    if (!c.streamables || !document.URL.includes("play")) return;
+    if (!c.canView.url || !document.URL.includes("play")) return;
     content = c;
     if (!document.querySelector("#playPage")) addElement$1();
   };
@@ -517,9 +517,8 @@
       const downProgressEl = downloadProgressEl ?? createDownloadProgressEl("下载中. 0 / 0 (0)");
       domBox.appendChild(downProgressEl);
       clearTimeout(timer2);
-      const { title, modified, streamables, _id, nickname, bucketRegion } = content;
-      const { s3key } = streamables[0];
-      const videoInfo = { title: formatVideoFilename(title, modified), id: _id, lang: bucketRegion === "ap-northeast-1" ? "jp" : "kr", s3key };
+      const { title, modified, _id, nickname, bucketRegion, canView } = content;
+      const videoInfo = { title: formatVideoFilename(title, modified), id: _id, url: canView.url };
       let chunkLength = 0;
       let totalSize = 0;
       let downloadIndex = 0;
@@ -552,7 +551,7 @@
     return new Promise((resolve) => {
       var _a;
       const insert = (e) => {
-        const dom1 = e.querySelector(".text-white");
+        const dom1 = e.querySelector(":scope > .text-white");
         e.insertBefore(dom, dom1);
         resolve();
       };

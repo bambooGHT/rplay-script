@@ -1,6 +1,8 @@
 import type { lib as LIB } from "crypto-js";
 
-export const decrypt = (m3u8Data: ArrayBuffer, key: ArrayBuffer) => {
+export const decrypt = (m3u8Data: ArrayBuffer, key?: ArrayBuffer) => {
+
+  if (!key) return new Uint8Array(m3u8Data);
   const { lib, mode, pad, AES } = CryptoJS;
   const encryptedData = new Uint8Array(m3u8Data);
   const ciphertext = lib.WordArray.create(encryptedData as any);

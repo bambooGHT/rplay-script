@@ -6,9 +6,9 @@ import type { IContent } from "../types";
 let content: IContent = null!;
 
 export const playPage = (c: IContent) => {
-  if (!c.streamables || !document.URL.includes("play")) return;
+  if (!c.canView.url || !document.URL.includes("play")) return;
   content = c;
-  
+
   if (!document.querySelector("#playPage")) addElement();
 };
 
@@ -28,9 +28,8 @@ const addElement = async () => {
     domBox.appendChild(downProgressEl);
     clearTimeout(timer);
 
-    const { title, modified, streamables, _id, nickname, bucketRegion } = content;
-    const { s3key } = streamables[0];
-    const videoInfo = { title: formatVideoFilename(title, modified), id: _id, lang: bucketRegion === "ap-northeast-1" ? "jp" : "kr", s3key } satisfies IVideoInfo;
+    const { title, modified, _id, nickname, bucketRegion, canView } = content;
+    const videoInfo = { title: formatVideoFilename(title, modified), id: _id, url: canView.url } satisfies IVideoInfo;
 
     let chunkLength = 0;
     let totalSize = 0;
@@ -66,7 +65,7 @@ const addElement = async () => {
 const insertElement = (dom: Element) => {
   return new Promise<void>((resolve) => {
     const insert = (e: Element) => {
-      const dom1 = e.querySelector(".text-white");
+      const dom1 = e.querySelector(":scope > .text-white");
       e.insertBefore(dom, dom1);
       resolve();
     };

@@ -13,6 +13,7 @@ export interface IContent {
   bucketRegion: "ap-northeast-1" | "ap-northeast-2";
   /** url */
   streamables: [{ s3key: string; }];
+  canView: { url: string; };
 }
 
 export type RecordContent = Record<string, IContent>;

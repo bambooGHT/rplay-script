@@ -8,8 +8,8 @@ export default defineConfig({
       userscript: {
         name: "newRplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.1.10",
-        description: "修复dom",
+        version: "1.1.20",
+        description: "现在需要订阅才能播放的视频需要订阅才会有下载按钮,批量下载的场合也要订阅",
         author: "bambooGHT",
         match: [
           "https://rplay.live/*"

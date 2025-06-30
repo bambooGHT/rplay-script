@@ -111,13 +111,12 @@ export const initListDownloadData = ({
 const getDownloadList = (idList: Set<string>, videoDataList: RecordContent) => {
   return [...idList].map<IVideoInfo>(p => {
     const content = videoDataList[p];
-    const streamInfo = content.streamables[0];
+    const canView = content.canView;
 
     return {
       title: formatVideoFilename(content.title, content.publishedAt || content.modified),
       id: content._id,
-      lang: content.bucketRegion === "ap-northeast-1" ? "jp" : "kr",
-      s3key: streamInfo.s3key
+      url: canView.url
     };
   });
 };

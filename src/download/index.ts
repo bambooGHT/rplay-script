@@ -6,7 +6,7 @@ export enum VideoDownloadError {
   CANCEL_DOWNLOAD = "CANCEL_DOWNLOAD"
 }
 
-export interface IVideoInfo { title: string; id: string; lang: string; s3key: string; };
+export interface IVideoInfo { title: string; id: string; url: string; };
 export interface IOnVideoDownload {
   onBeforeDownload?: (chunkLength: number) => void;
   onProgress?: (progress: number) => void;
@@ -14,7 +14,7 @@ export interface IOnVideoDownload {
   onAllComplete?: () => void;
   onError?: (error: { id: string; message: VideoDownloadError; }) => void;
 }
-export interface IM3u8Data { id: string; url: string; key: ArrayBuffer; };
+export interface IM3u8Data { id: string; url: string; key?: ArrayBuffer; };
 export type DownloadVideoFunc = (video: { dirName: string, videoInfo: IVideoInfo | IVideoInfo[]; }, onDownload?: IOnVideoDownload) => void;
 
 export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
@@ -46,7 +46,7 @@ export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
 
   for (const videoInfo of videoInfoList) {
     try {
-      const m3u8Data = await getM3u8Data(videoInfo.id, videoInfo.lang, videoInfo.s3key);
+      const m3u8Data = await getM3u8Data(videoInfo.id, videoInfo.url);
       await saveVideo(video.dirName, videoInfo, m3u8Data);
     } catch (error) {
       console.error(error);
@@ -125,9 +125,8 @@ const getSaveDir = async (dir: FileSystemDirectoryHandle, name: string) => {
   return saveDir;
 };
 
-const getM3u8Data = async (id: string, lang: string, s3key: string): Promise<IM3u8Data> => {
-  const [type, num, hash] = s3key.split("/");
-  const res = await fetch(`https://api.rplay-cdn.com/content/hlsstream?s3key=${lang || "kr"}/${type}/${num}/${hash}/${hash}.m3u8&token=${userData.token}&userOid=${userData.oid}&contentOid=${id}&loginType=plax&abr=true`, {
+const getM3u8Data = async (id: string, url: string): Promise<IM3u8Data> => {
+  const res = await fetch(url, {
     "headers": {
       "accept": "*/*",
       "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-CN;q=0.5",
@@ -147,14 +146,16 @@ const getM3u8Data = async (id: string, lang: string, s3key: string): Promise<IM3
   });
 
   const m3u8Data = await res.text();
-  const url = m3u8Data.split("\n").filter(s => s.includes("http")).pop() as string;
+  const url1 = m3u8Data.split("\n").filter(s => s.startsWith("http"))[0] as string;
   const key = await getKey(m3u8Data);
 
-  return { id, url, key };
+  return { id, url: url1, key };
 };
 
 const getKey = async (m3u8Data: string) => {
-  const [url] = m3u8Data.match(/(?<=URI=")[^"]+(?=")/)!;
+  const [url] = m3u8Data.match(/(?<=URI=")[^"]+(?=")/) ?? [];
+  if (!url) return undefined;
+
   return (await fetch(url)).arrayBuffer();
 };
 
