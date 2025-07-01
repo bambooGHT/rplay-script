@@ -111,12 +111,11 @@ export const initListDownloadData = ({
 const getDownloadList = (idList: Set<string>, videoDataList: RecordContent) => {
   return [...idList].map<IVideoInfo>(p => {
     const content = videoDataList[p];
-    const canView = content.canView;
 
     return {
       title: formatVideoFilename(content.title, content.publishedAt || content.modified),
       id: content._id,
-      url: canView.url
+      url: ""
     };
   });
 };

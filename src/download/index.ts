@@ -1,3 +1,5 @@
+import { getResolutionUrls } from "../tools";
+import type { IContent } from "../types";
 import { decrypt } from "./crypto";
 
 export enum VideoDownloadError {
@@ -34,7 +36,12 @@ export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
     }
 
     const save = await (await dir.getFileHandle(videoInfo.title, { create: true })).createWritable();
-    const stream = await downStream(videoInfo.url, videoInfo.m3u8Data ?? await getM3u8Data(videoInfo.id, videoInfo.url), onDownload);
+    if (!videoInfo.m3u8Data && !videoInfo.url) {
+      const content = await getContentData(videoInfo.id);
+      videoInfo.m3u8Data = content.m3u8Data;
+      videoInfo.url = content.url;
+    }
+    const stream = await downStream(videoInfo.url, videoInfo.m3u8Data!, onDownload);
     await stream.pipeTo(save, { preventClose: true });
 
     return save.close();
@@ -125,6 +132,25 @@ const retryFunction = async <T>(fn: () => Promise<T>, retries = 3, delay = 1500)
 const getSaveDir = async (dir: FileSystemDirectoryHandle, name: string) => {
   const saveDir = await dir.getDirectoryHandle(name, { create: true });
   return saveDir;
+};
+
+const getContentData = async (contentOid: string) => {
+  const { AccountModule: { token, userInfo: { oid } } } = JSON.parse(localStorage.getItem("vuex") || `{}`);
+  const res = await fetch(`https://api.rplay.live/content?contentOid=${contentOid}&status=published&withComments=true&withContentMetadata=false&requestCanView=true&includeWatchHistory=true&lang=jp&requestorOid=${oid}&loginType=plax`, {
+    "headers": {
+      "authorization": token
+    }
+  });
+
+  const data = await res.json() as IContent;
+  const m3u8Data = await getM3u8Data(contentOid, data.canView.url);
+  const qualityOptions = getResolutionUrls(m3u8Data.data);
+  const downIndex = qualityOptions.map(item => +item.resolution.split("x")[1]).reduce((maxIndex, current, index, arr) => {
+    return current > arr[maxIndex] ? index : maxIndex;
+  }, 0);
+  const url = qualityOptions[downIndex].url;
+
+  return { url, m3u8Data };
 };
 
 export const getM3u8Data = async (id: string, url: string): Promise<IM3u8Data> => {

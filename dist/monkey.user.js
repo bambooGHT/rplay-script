@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         newRplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.1.30
+// @version      1.1.50
 // @author       bambooGHT
 // @description  播放页面添加清晰度下载选项，现在需要订阅才能播放的视频需要订阅才会有下载按钮,批量下载的场合也要订阅
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
@@ -119,6 +119,36 @@
     select.onchange = () => func(Number(select.value));
     return select;
   };
+  const formatVideoFilename = (title, date) => {
+    if (date) date = `[${date.slice(0, 10)}]`;
+    return `${date} ${title.replaceAll(":", ".")}.ts`.replace(/[/\\:?"<>|\*]/g, "");
+  };
+  const formatFileSize = (size) => {
+    const aMultiples = ["B", "K", "M", "G", "T", "P", "E", "Z", "Y"];
+    const bye = 1024;
+    if (size < bye) return size + aMultiples[0];
+    let i = 0;
+    for (var l = 0; l < 8; l++) {
+      if (size / Math.pow(bye, l) < 1) break;
+      i = l;
+    }
+    return `${(size / Math.pow(bye, i)).toFixed(2)}${aMultiples[i]}`;
+  };
+  const getResolutionUrls = (m3u8Data) => {
+    const lines = m3u8Data.split("\n");
+    const qualityOptions = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.includes("RESOLUTION")) {
+        const [resolution] = line.match(new RegExp("(?<=RESOLUTION=).*?(?=,)"));
+        qualityOptions.push({
+          resolution,
+          url: lines[i + 1]
+        });
+      }
+    }
+    return qualityOptions;
+  };
   const decrypt = (m3u8Data, key) => {
     if (!key) return new Uint8Array(m3u8Data);
     const { lib, mode, pad, AES } = CryptoJS;
@@ -169,7 +199,12 @@
         return;
       }
       const save = await (await dir.getFileHandle(videoInfo.title, { create: true })).createWritable();
-      const stream = await downStream(videoInfo.url, videoInfo.m3u8Data ?? await getM3u8Data(videoInfo.id, videoInfo.url), onDownload);
+      if (!videoInfo.m3u8Data && !videoInfo.url) {
+        const content2 = await getContentData(videoInfo.id);
+        videoInfo.m3u8Data = content2.m3u8Data;
+        videoInfo.url = content2.url;
+      }
+      const stream = await downStream(videoInfo.url, videoInfo.m3u8Data, onDownload);
       await stream.pipeTo(save, { preventClose: true });
       return save.close();
     };
@@ -256,6 +291,22 @@
     const saveDir = await dir.getDirectoryHandle(name, { create: true });
     return saveDir;
   };
+  const getContentData = async (contentOid) => {
+    const { AccountModule: { token, userInfo: { oid } } } = JSON.parse(localStorage.getItem("vuex") || `{}`);
+    const res = await fetch(`https://api.rplay.live/content?contentOid=${contentOid}&status=published&withComments=true&withContentMetadata=false&requestCanView=true&includeWatchHistory=true&lang=jp&requestorOid=${oid}&loginType=plax`, {
+      "headers": {
+        "authorization": token
+      }
+    });
+    const data = await res.json();
+    const m3u8Data = await getM3u8Data(contentOid, data.canView.url);
+    const qualityOptions = getResolutionUrls(m3u8Data.data);
+    const downIndex = qualityOptions.map((item) => +item.resolution.split("x")[1]).reduce((maxIndex, current, index, arr) => {
+      return current > arr[maxIndex] ? index : maxIndex;
+    }, 0);
+    const url = qualityOptions[downIndex].url;
+    return { url, m3u8Data };
+  };
   const getM3u8Data = async (id, url) => {
     const res = await fetch(url, {
       "headers": {
@@ -305,36 +356,6 @@
     })).text();
     const urlList = data.split("\n").filter((p) => p.startsWith("http"));
     return urlList;
-  };
-  const formatVideoFilename = (title, date) => {
-    if (date) date = `[${date.slice(0, 10)}]`;
-    return `${date} ${title.replaceAll(":", ".")}.ts`.replace(/[/\\:?"<>|\*]/g, "");
-  };
-  const formatFileSize = (size) => {
-    const aMultiples = ["B", "K", "M", "G", "T", "P", "E", "Z", "Y"];
-    const bye = 1024;
-    if (size < bye) return size + aMultiples[0];
-    let i = 0;
-    for (var l = 0; l < 8; l++) {
-      if (size / Math.pow(bye, l) < 1) break;
-      i = l;
-    }
-    return `${(size / Math.pow(bye, i)).toFixed(2)}${aMultiples[i]}`;
-  };
-  const getResolutionUrls = (m3u8Data) => {
-    const lines = m3u8Data.split("\n");
-    const qualityOptions = [];
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (line.includes("RESOLUTION")) {
-        const [resolution] = line.match(new RegExp("(?<=RESOLUTION=).*?(?=,)"));
-        qualityOptions.push({
-          resolution,
-          url: lines[i + 1]
-        });
-      }
-    }
-    return qualityOptions;
   };
   const insertElement$1 = (dom, key) => {
     return new Promise((resolve) => {
@@ -433,11 +454,10 @@
   const getDownloadList = (idList, videoDataList) => {
     return [...idList].map((p) => {
       const content2 = videoDataList[p];
-      const canView = content2.canView;
       return {
         title: formatVideoFilename(content2.title, content2.publishedAt || content2.modified),
         id: content2._id,
-        url: canView.url
+        url: ""
       };
     });
   };

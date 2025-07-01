@@ -8,7 +8,7 @@ export default defineConfig({
       userscript: {
         name: "newRplayScript",
         namespace: "https://github.com/bambooGHT",
-        version: "1.1.30",
+        version: "1.1.50",
         description: "播放页面添加清晰度下载选项，现在需要订阅才能播放的视频需要订阅才会有下载按钮,批量下载的场合也要订阅",
         author: "bambooGHT",
         match: [
