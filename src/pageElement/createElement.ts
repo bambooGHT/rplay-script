@@ -1,3 +1,5 @@
+import { QualityOption } from "../types";
+
 export const createDomBox = () => {
   const domBox = document.createElement("div");
   domBox.style.width = "100%";
@@ -7,7 +9,7 @@ export const createDomBox = () => {
 
 export const createButtonEl = (title: string) => {
   const tempEl = `
-  <div class="plax-button cursor-pointer select-none px-4 py-2 hover:opacity-75 mr-2 h-8 whitespace-nowrap px-4 text-md  bg-plaxgray-170 text-plaxgray-90" data-v-55e34760="" style="border-radius: 6px;">
+  <div class="plax-button cursor-pointer select-none px-4 py-2 hover:opacity-75 mr-2 h-8 whitespace-nowrap px-4 text-md  bg-plaxgray-170 text-plaxgray-90" style="border-radius: 6px;">
      ${title}
   </div>
   `;
@@ -55,4 +57,30 @@ export const createDownloadElement = () => {
   domBox.appendChild(domRow1);
 
   return { domBox, downButton, selectAllButton, filterEl };
+};
+
+export const createSelectElement = (urls: QualityOption[], index: number, func: (index: number) => void) => {
+  const select = document.createElement("select");
+  select.classList.add(
+    "plax-button",
+    "cursor-pointer",
+    "select-none",
+    "px-4",
+    "py-2",
+    "hover:opacity-75",
+    "mr-2",
+    "h-8",
+    "whitespace-nowrap",
+    "text-md",
+    "bg-plaxgray-170",
+    "text-plaxgray-90"
+  );
+  select.style.userSelect = "none";
+  select.style.width = "min-content";
+  select.style.margin = "5px 6px 5px 0";
+
+  select.innerHTML = urls.map(({ resolution, url }, i) => `<option value="${i}" ${index === i ? "selected" : ""}">${resolution}</option>`).join("");
+  select.onchange = () => func(Number(select.value));
+
+  return select;
 };

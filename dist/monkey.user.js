@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         newRplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.1.20
+// @version      1.1.30
 // @author       bambooGHT
-// @description  现在需要订阅才能播放的视频需要订阅才会有下载按钮,批量下载的场合也要订阅
+// @description  播放页面添加清晰度下载选项，现在需要订阅才能播放的视频需要订阅才会有下载按钮,批量下载的场合也要订阅
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
@@ -55,7 +55,7 @@
   };
   const createButtonEl = (title) => {
     const tempEl = `
-  <div class="plax-button cursor-pointer select-none px-4 py-2 hover:opacity-75 mr-2 h-8 whitespace-nowrap px-4 text-md  bg-plaxgray-170 text-plaxgray-90" data-v-55e34760="" style="border-radius: 6px;">
+  <div class="plax-button cursor-pointer select-none px-4 py-2 hover:opacity-75 mr-2 h-8 whitespace-nowrap px-4 text-md  bg-plaxgray-170 text-plaxgray-90" style="border-radius: 6px;">
      ${title}
   </div>
   `;
@@ -95,6 +95,29 @@
     domRow1.append(downButton, selectAllButton, filterEl);
     domBox.appendChild(domRow1);
     return { domBox, downButton, selectAllButton, filterEl };
+  };
+  const createSelectElement = (urls, index, func) => {
+    const select = document.createElement("select");
+    select.classList.add(
+      "plax-button",
+      "cursor-pointer",
+      "select-none",
+      "px-4",
+      "py-2",
+      "hover:opacity-75",
+      "mr-2",
+      "h-8",
+      "whitespace-nowrap",
+      "text-md",
+      "bg-plaxgray-170",
+      "text-plaxgray-90"
+    );
+    select.style.userSelect = "none";
+    select.style.width = "min-content";
+    select.style.margin = "5px 6px 5px 0";
+    select.innerHTML = urls.map(({ resolution, url }, i) => `<option value="${i}" ${index === i ? "selected" : ""}">${resolution}</option>`).join("");
+    select.onchange = () => func(Number(select.value));
+    return select;
   };
   const decrypt = (m3u8Data, key) => {
     if (!key) return new Uint8Array(m3u8Data);
@@ -138,7 +161,7 @@
       });
       return;
     }
-    const saveVideo = async (dirName, videoInfo, m3u8Data) => {
+    const saveVideo = async (dirName, videoInfo) => {
       var _a2;
       const dir = await getSaveDir(dirHandle, dirName);
       if (await isExists(dir, videoInfo.title)) {
@@ -146,7 +169,7 @@
         return;
       }
       const save = await (await dir.getFileHandle(videoInfo.title, { create: true })).createWritable();
-      const stream = await downStream(m3u8Data, onDownload);
+      const stream = await downStream(videoInfo.url, videoInfo.m3u8Data ?? await getM3u8Data(videoInfo.id, videoInfo.url), onDownload);
       await stream.pipeTo(save, { preventClose: true });
       return save.close();
     };
@@ -156,8 +179,7 @@
     }
     for (const videoInfo of videoInfoList) {
       try {
-        const m3u8Data = await getM3u8Data(videoInfo.id, videoInfo.url);
-        await saveVideo(video.dirName, videoInfo, m3u8Data);
+        await saveVideo(video.dirName, videoInfo);
       } catch (error) {
         console.error(error);
         (_b = onDownload == null ? void 0 : onDownload.onError) == null ? void 0 : _b.call(onDownload, {
@@ -181,13 +203,14 @@
       return false;
     }
   };
-  const downStream = async (m3u8Data, onDownload) => {
+  const downStream = async (url, m3u8Data, onDownload) => {
     var _a;
-    const urlList = await getvideoChunks(m3u8Data.url);
+    const urlList = await getvideoChunks(url);
+    const key = await getKey(m3u8Data.data);
     (_a = onDownload == null ? void 0 : onDownload.onBeforeDownload) == null ? void 0 : _a.call(onDownload, urlList.length);
-    const downChunk = async (url) => {
+    const downChunk = async (url2) => {
       var _a2;
-      const uint8Array = decrypt(await (await fetch(url)).arrayBuffer(), m3u8Data.key);
+      const uint8Array = decrypt(await (await fetch(url2)).arrayBuffer(), key);
       (_a2 = onDownload == null ? void 0 : onDownload.onProgress) == null ? void 0 : _a2.call(onDownload, uint8Array.byteLength);
       return uint8Array;
     };
@@ -200,7 +223,7 @@
           return;
         }
         const chunks = urlList.splice(0, 6);
-        let data = await Promise.all(chunks.map((url) => retryFunction(() => downChunk(url)))).catch((e) => null);
+        let data = await Promise.all(chunks.map((url2) => retryFunction(() => downChunk(url2)))).catch((e) => null);
         if (!data) {
           (_b = onDownload == null ? void 0 : onDownload.onError) == null ? void 0 : _b.call(onDownload, {
             id: m3u8Data.id,
@@ -253,9 +276,7 @@
       "credentials": "omit"
     });
     const m3u8Data = await res.text();
-    const url1 = m3u8Data.split("\n").filter((s) => s.startsWith("http"))[0];
-    const key = await getKey(m3u8Data);
-    return { id, url: url1, key };
+    return { id, data: m3u8Data };
   };
   const getKey = async (m3u8Data) => {
     const [url] = m3u8Data.match(new RegExp('(?<=URI=")[^"]+(?=")')) ?? [];
@@ -299,6 +320,21 @@
       i = l;
     }
     return `${(size / Math.pow(bye, i)).toFixed(2)}${aMultiples[i]}`;
+  };
+  const getResolutionUrls = (m3u8Data) => {
+    const lines = m3u8Data.split("\n");
+    const qualityOptions = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.includes("RESOLUTION")) {
+        const [resolution] = line.match(new RegExp("(?<=RESOLUTION=).*?(?=,)"));
+        qualityOptions.push({
+          resolution,
+          url: lines[i + 1]
+        });
+      }
+    }
+    return qualityOptions;
   };
   const insertElement$1 = (dom, key) => {
     return new Promise((resolve) => {
@@ -506,10 +542,18 @@
     if (!document.querySelector("#playPage")) addElement$1();
   };
   const addElement$1 = async () => {
+    const m3u8Data = await getM3u8Data(content._id, content.canView.url);
+    const qualityOptions = getResolutionUrls(m3u8Data.data);
     const domBox = createDomBox();
+    const select = createSelectElement(qualityOptions, 0, (index) => downQualityIndex = index);
     const button = createButtonEl("下载");
+    const line1Box = document.createElement("div");
+    line1Box.style.display = "flex";
+    line1Box.appendChild(select);
+    line1Box.appendChild(button);
     domBox.id = "playPage";
-    domBox.appendChild(button);
+    domBox.appendChild(line1Box);
+    let downQualityIndex = 0;
     let timer2 = 0;
     button.onclick = () => {
       const downloadProgressEl = domBox.querySelector("#downloadProgress");
@@ -517,8 +561,8 @@
       const downProgressEl = downloadProgressEl ?? createDownloadProgressEl("下载中. 0 / 0 (0)");
       domBox.appendChild(downProgressEl);
       clearTimeout(timer2);
-      const { title, modified, _id, nickname, bucketRegion, canView } = content;
-      const videoInfo = { title: formatVideoFilename(title, modified), id: _id, url: canView.url };
+      const { title, modified, _id, nickname } = content;
+      const videoInfo = { title: formatVideoFilename(title, modified), id: _id, url: qualityOptions[downQualityIndex].url, m3u8Data };
       let chunkLength = 0;
       let totalSize = 0;
       let downloadIndex = 0;

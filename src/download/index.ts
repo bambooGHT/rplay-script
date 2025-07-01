@@ -6,7 +6,8 @@ export enum VideoDownloadError {
   CANCEL_DOWNLOAD = "CANCEL_DOWNLOAD"
 }
 
-export interface IVideoInfo { title: string; id: string; url: string; };
+export interface IM3u8Data { id: string, data: string; };
+export interface IVideoInfo { title: string; id: string; url: string; m3u8Data?: IM3u8Data; };
 export interface IOnVideoDownload {
   onBeforeDownload?: (chunkLength: number) => void;
   onProgress?: (progress: number) => void;
@@ -14,7 +15,6 @@ export interface IOnVideoDownload {
   onAllComplete?: () => void;
   onError?: (error: { id: string; message: VideoDownloadError; }) => void;
 }
-export interface IM3u8Data { id: string; url: string; key?: ArrayBuffer; };
 export type DownloadVideoFunc = (video: { dirName: string, videoInfo: IVideoInfo | IVideoInfo[]; }, onDownload?: IOnVideoDownload) => void;
 
 export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
@@ -26,7 +26,7 @@ export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
     return;
   }
 
-  const saveVideo = async (dirName: string, videoInfo: IVideoInfo, m3u8Data: IM3u8Data) => {
+  const saveVideo = async (dirName: string, videoInfo: IVideoInfo) => {
     const dir = await getSaveDir(dirHandle, dirName);
     if (await isExists(dir, videoInfo.title)) {
       onDownload?.onComplete?.();
@@ -34,8 +34,9 @@ export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
     }
 
     const save = await (await dir.getFileHandle(videoInfo.title, { create: true })).createWritable();
-    const stream = await downStream(m3u8Data, onDownload);
+    const stream = await downStream(videoInfo.url, videoInfo.m3u8Data ?? await getM3u8Data(videoInfo.id, videoInfo.url), onDownload);
     await stream.pipeTo(save, { preventClose: true });
+
     return save.close();
   };
 
@@ -46,8 +47,7 @@ export const downVideo: DownloadVideoFunc = async (video, onDownload) => {
 
   for (const videoInfo of videoInfoList) {
     try {
-      const m3u8Data = await getM3u8Data(videoInfo.id, videoInfo.url);
-      await saveVideo(video.dirName, videoInfo, m3u8Data);
+      await saveVideo(video.dirName, videoInfo);
     } catch (error) {
       console.error(error);
       onDownload?.onError?.({ id: videoInfo.id, message: VideoDownloadError.NOT_PURCHASED });
@@ -71,12 +71,14 @@ const isExists = async (dir: FileSystemDirectoryHandle, title: string) => {
 };
 
 // 下載
-const downStream = async (m3u8Data: IM3u8Data, onDownload?: IOnVideoDownload) => {
-  const urlList = await getvideoChunks(m3u8Data.url);
+const downStream = async (url: string, m3u8Data: IM3u8Data, onDownload?: IOnVideoDownload) => {
+  const urlList = await getvideoChunks(url);
+  const key = await getKey(m3u8Data.data);
+
   onDownload?.onBeforeDownload?.(urlList.length);
 
   const downChunk = async (url: string) => {
-    const uint8Array = decrypt(await (await fetch(url)).arrayBuffer(), m3u8Data.key);
+    const uint8Array = decrypt(await (await fetch(url)).arrayBuffer(), key);
     onDownload?.onProgress?.(uint8Array.byteLength);
     return uint8Array;
   };
@@ -125,7 +127,7 @@ const getSaveDir = async (dir: FileSystemDirectoryHandle, name: string) => {
   return saveDir;
 };
 
-const getM3u8Data = async (id: string, url: string): Promise<IM3u8Data> => {
+export const getM3u8Data = async (id: string, url: string): Promise<IM3u8Data> => {
   const res = await fetch(url, {
     "headers": {
       "accept": "*/*",
@@ -146,10 +148,7 @@ const getM3u8Data = async (id: string, url: string): Promise<IM3u8Data> => {
   });
 
   const m3u8Data = await res.text();
-  const url1 = m3u8Data.split("\n").filter(s => s.startsWith("http"))[0] as string;
-  const key = await getKey(m3u8Data);
-
-  return { id, url: url1, key };
+  return { id, data: m3u8Data };
 };
 
 const getKey = async (m3u8Data: string) => {

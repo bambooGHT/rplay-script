@@ -33,3 +33,8 @@ export interface ICreator {
     publishedFileContentsSet: any;
   };
 }
+
+export interface QualityOption {
+  resolution: string;
+  url: string;
+}

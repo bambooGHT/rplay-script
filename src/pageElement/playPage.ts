@@ -1,6 +1,6 @@
-import { downVideo, type IOnVideoDownload, type IVideoInfo } from "../download";
-import { createButtonEl, createDomBox, createDownloadProgressEl } from "./createElement";
-import { formatFileSize, formatVideoFilename } from "../tools";
+import { downVideo, type IOnVideoDownload, type IVideoInfo, getM3u8Data } from "../download";
+import { createButtonEl, createDomBox, createDownloadProgressEl, createSelectElement } from "./createElement";
+import { formatFileSize, formatVideoFilename, getResolutionUrls } from "../tools";
 import type { IContent } from "../types";
 
 let content: IContent = null!;
@@ -13,12 +13,21 @@ export const playPage = (c: IContent) => {
 };
 
 const addElement = async () => {
+  const m3u8Data = await getM3u8Data(content._id, content.canView.url);
+  const qualityOptions = getResolutionUrls(m3u8Data.data);
   const domBox = createDomBox();
+  const select = createSelectElement(qualityOptions, 0, (index: number) => downQualityIndex = index);
   const button = createButtonEl("下载");
 
+  const line1Box = document.createElement("div");
+  line1Box.style.display = "flex";
+  line1Box.appendChild(select);
+  line1Box.appendChild(button);
+  
   domBox.id = "playPage";
-  domBox.appendChild(button);
+  domBox.appendChild(line1Box);
 
+  let downQualityIndex = 0;
   let timer = 0;
   button.onclick = () => {
     const downloadProgressEl = domBox.querySelector("#downloadProgress") satisfies HTMLDivElement | null;
@@ -28,8 +37,8 @@ const addElement = async () => {
     domBox.appendChild(downProgressEl);
     clearTimeout(timer);
 
-    const { title, modified, _id, nickname, bucketRegion, canView } = content;
-    const videoInfo = { title: formatVideoFilename(title, modified), id: _id, url: canView.url } satisfies IVideoInfo;
+    const { title, modified, _id, nickname } = content;
+    const videoInfo = { title: formatVideoFilename(title, modified), id: _id, url: qualityOptions[downQualityIndex].url, m3u8Data } satisfies IVideoInfo;
 
     let chunkLength = 0;
     let totalSize = 0;
