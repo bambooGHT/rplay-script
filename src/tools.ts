@@ -27,7 +27,7 @@ export const getResolutionUrls = (m3u8Data: string) => {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.includes("RESOLUTION")) {
-      const [resolution] = line.match(new RegExp("(?<=RESOLUTION=).*?(?=,)"))!;
+      const [resolution] = line.match(new RegExp("(?<=RESOLUTION=).*?(?=,|$)"))!;
       qualityOptions.push({
         resolution,
         url: lines[i + 1]

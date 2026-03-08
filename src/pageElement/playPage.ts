@@ -7,9 +7,15 @@ let content: IContent = null!;
 
 export const playPage = (c: IContent) => {
   if (!c.canView.url || !document.URL.includes("play")) return;
-  content = c;
 
-  if (!document.querySelector("#playPage")) addElement();
+  let playEl = document.querySelector("#playEl");
+  if (playEl && c.canView.url !== content?.canView.url) {
+    playEl.remove();
+    playEl = null;
+  }
+
+  content = c;
+  if (!playEl) addElement();
 };
 
 const addElement = async () => {
@@ -23,8 +29,8 @@ const addElement = async () => {
   line1Box.style.display = "flex";
   line1Box.appendChild(select);
   line1Box.appendChild(button);
-  
-  domBox.id = "playPage";
+
+  domBox.id = "playEl";
   domBox.appendChild(line1Box);
 
   let downQualityIndex = 0;

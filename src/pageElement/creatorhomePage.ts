@@ -3,7 +3,7 @@ import { createDownloadElement, createButtonEl, createCheckbox, createDomBox, cr
 import { initListDownloadData, insertElement } from "./tools";
 
 export const creatorhomePage = (creator: ICreator) => {
-  if (!document.URL.includes("creatorhome")
+  if (!["creatorhome", "\/c\/"].find(p => document.URL.includes(p))
     || document.querySelector("#creatorhomePage")) return;
   addElement(creator);
 };
@@ -15,7 +15,7 @@ const addElement = async (creator: ICreator) => {
   const dom = await insertElement(domBox, ".md\\:justify-center");
 
   const listBox = dom.parentElement!.lastElementChild!;
-
+  
   const { listData, resetData, initListCheckbox } = initListDownloadData({
     videoDataList: creator.metadataSet.publishedContentSet,
     domBox,

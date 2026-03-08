@@ -41,7 +41,9 @@ export const initListDownloadData = ({
   let observer: MutationObserver;
   const observerVideoAdd = () => {
     if (observer) observer.disconnect();
-    observer = observerVideoList(listBox.querySelector(".grid")!, addVideoCheckbox);
+
+    const list = listBox.querySelector(".grid");
+    if (list) observer = observerVideoList(list, addVideoCheckbox);
   };
 
   const resetData = () => {

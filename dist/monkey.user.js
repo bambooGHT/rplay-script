@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         newRplayScript
 // @namespace    https://github.com/bambooGHT
-// @version      1.1.50
+// @version      1.1.60
 // @author       bambooGHT
-// @description  播放页面添加清晰度下载选项，现在需要订阅才能播放的视频需要订阅才会有下载按钮,批量下载的场合也要订阅
+// @description  修复没有下载按钮的问题
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rplay.live
 // @downloadURL  https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
 // @updateURL    https://github.com/bambooGHT/rplay-script/raw/refs/heads/new/dist/monkey.user.js
@@ -140,7 +140,7 @@
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line.includes("RESOLUTION")) {
-        const [resolution] = line.match(new RegExp("(?<=RESOLUTION=).*?(?=,)"));
+        const [resolution] = line.match(new RegExp("(?<=RESOLUTION=).*?(?=,|$)"));
         qualityOptions.push({
           resolution,
           url: lines[i + 1]
@@ -396,7 +396,8 @@
     let observer;
     const observerVideoAdd = () => {
       if (observer) observer.disconnect();
-      observer = observerVideoList(listBox.querySelector(".grid"), addVideoCheckbox);
+      const list = listBox.querySelector(".grid");
+      if (list) observer = observerVideoList(list, addVideoCheckbox);
     };
     const resetData = () => {
       uodateFilterCount(0);
@@ -523,7 +524,7 @@
     downVideo({ dirName, videoInfo: list }, onDownload);
   };
   const creatorhomePage = (creator) => {
-    if (!document.URL.includes("creatorhome") || document.querySelector("#creatorhomePage")) return;
+    if (!["creatorhome", "/c/"].find((p) => document.URL.includes(p)) || document.querySelector("#creatorhomePage")) return;
     addElement$2(creator);
   };
   const addElement$2 = async (creator) => {
@@ -558,8 +559,13 @@
   let content = null;
   const playPage = (c) => {
     if (!c.canView.url || !document.URL.includes("play")) return;
+    let playEl = document.querySelector("#playEl");
+    if (playEl && c.canView.url !== (content == null ? void 0 : content.canView.url)) {
+      playEl.remove();
+      playEl = null;
+    }
     content = c;
-    if (!document.querySelector("#playPage")) addElement$1();
+    if (!playEl) addElement$1();
   };
   const addElement$1 = async () => {
     const m3u8Data = await getM3u8Data(content._id, content.canView.url);
@@ -571,7 +577,7 @@
     line1Box.style.display = "flex";
     line1Box.appendChild(select);
     line1Box.appendChild(button);
-    domBox.id = "playPage";
+    domBox.id = "playEl";
     domBox.appendChild(line1Box);
     let downQualityIndex = 0;
     let timer2 = 0;
@@ -702,7 +708,7 @@
     { value: "content?contentOid", callback: playPage },
     {
       value: (url) => {
-        return url.includes("getuser?userOid") && url.split("?")[1].split("&")[0].split("=")[1] !== userData.oid;
+        return url.includes("getuser?customUrl") && url.split("?")[1].split("&")[0].split("=")[1] !== userData.oid;
       },
       callback: creatorhomePage
     }

@@ -56,7 +56,7 @@ listenReq([
   { value: "content?contentOid", callback: playPage },
   {
     value: (url) => {
-      return url.includes("getuser?userOid") && url.split("?")[1].split("&")[0].split("=")[1] !== userData.oid;
+      return url.includes("getuser?customUrl") && url.split("?")[1].split("&")[0].split("=")[1] !== userData.oid;
     },
     callback: creatorhomePage
   },
